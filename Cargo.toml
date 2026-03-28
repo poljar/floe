@@ -1,0 +1,16 @@
+[package]
+name = "floe-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aead = "0.6.0-rc.10"
+digest = { version = "0.11.2", features = ["mac"] }
+subtle = "2.6.1"
+rand = "0.10.0"
+sha2 = "0.11.0"
+hmac = "0.13.0-rc.6"
+
+[dev-dependencies]
+aes-gcm = "0.11.0-rc.3"
+hex = "0.4.3"

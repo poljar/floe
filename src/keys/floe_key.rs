@@ -1,0 +1,97 @@
+// Copyright 2026 Damir Jelić, Snowflake Inc.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use std::{marker::PhantomData, ops::Sub};
+
+use aead::{
+    AeadInOut, Key,
+    array::{Array, ArraySize},
+    consts::U32,
+};
+use digest::{KeyInit, OutputSizeUser};
+
+use super::message_key::MessageKey;
+
+use crate::{
+    FloeKdf,
+    keys::FloeKdfKey,
+    types::{FloeIv, HeaderTag},
+    utils::floe_kdf,
+};
+
+// TODO: Derive zeroize under a feature flag.
+pub struct FloeKey<A, H>
+where
+    A: AeadInOut + KeyInit,
+    H: FloeKdf,
+{
+    key: Key<A>,
+    _phantom_aead: PhantomData<A>,
+    _phantom: PhantomData<H>,
+}
+
+impl<A, H> FloeKey<A, H>
+where
+    A: AeadInOut + KeyInit,
+    H: FloeKdf,
+{
+    pub fn new(key: Key<A>) -> Self {
+        Self {
+            key,
+            _phantom_aead: PhantomData::default(),
+            _phantom: PhantomData::default(),
+        }
+    }
+
+    pub(crate) fn derive_header_tag<const N: usize, const S: u32>(
+        &self,
+        floe_iv: &FloeIv<N>,
+        associated_data: &[u8],
+    ) -> HeaderTag
+    where
+        <H as OutputSizeUser>::OutputSize: Sub<U32>,
+        <<H as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
+    {
+        const PURPOSE: &[u8] = b"HEADER_TAG:";
+
+        let output = floe_kdf::<A, H, N, S>(&self.key, floe_iv, associated_data, PURPOSE);
+        let (inner, _) = Array::split::<U32>(output.into_bytes());
+
+        HeaderTag { inner }
+    }
+
+    pub(crate) fn derive_message_key<const N: usize, const S: u32>(
+        &self,
+        floe_iv: &FloeIv<N>,
+        associated_data: &[u8],
+    ) -> MessageKey<A, H>
+    where
+        <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
+        <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
+    {
+        const PURPOSE: &[u8] = b"MESSAGE_KEY:";
+
+        let output = floe_kdf::<A, H, N, S>(&self.key, floe_iv, associated_data, PURPOSE);
+
+        let (output, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
+        let key = FloeKdfKey::<H>::from_iter(output);
+
+        MessageKey {
+            key,
+            _phantom_aead: PhantomData::default(),
+            _phantom: PhantomData::default(),
+        }
+    }
+}
