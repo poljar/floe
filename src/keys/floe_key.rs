@@ -30,6 +30,11 @@ use crate::{
     utils::floe_kdf,
 };
 
+/// The main input key for a Floe session.
+///
+/// As per [spec], must be the same size as the AEAD key.
+///
+/// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#key-generation
 pub struct FloeKey<'a, A, H>
 where
     A: AeadInOut + KeyInit,
@@ -45,7 +50,8 @@ where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
-    pub fn new(key: &'a Key<A>) -> Self {
+    /// Create a new [`FloeKey`] from an array of bytes.
+    pub(crate) fn new(key: &'a Key<A>) -> Self {
         Self {
             key,
             _phantom_aead: PhantomData::default(),
@@ -53,6 +59,16 @@ where
         }
     }
 
+    /// Derive the header tag using this [`FloeKey`] as the input key material of the `FLOE_KDF`
+    /// operation.
+    ///
+    /// From the [spec]:
+    ///
+    /// ```text
+    /// HeaderTag = FLOE_KDF(key, iv, aad, "HEADER_TAG:", 32)
+    /// ```
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn derive_header_tag<const N: usize, const S: u32>(
         &self,
         floe_iv: &FloeIv<N>,
@@ -70,6 +86,16 @@ where
         HeaderTag { inner }
     }
 
+    /// Derive the [`MessageKey`] using this [`FloeKey`] as the input key material of the `FLOE_KDF`
+    /// operation.
+    ///
+    /// From the [spec]:
+    ///
+    /// ```text
+    /// MessageKey = FLOE_KDF(key, iv, aad, "MESSAGE_KEY:", KDF_KEY_LEN)
+    /// ```
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn derive_message_key<const N: usize, const S: u32>(
         &self,
         floe_iv: &FloeIv<N>,

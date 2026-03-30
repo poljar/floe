@@ -72,6 +72,7 @@ mod tests {
     type FloeEncryptorAesGcm = FloeEncryptor<Aes256Gcm, HmacSha384, 32, 64>;
     type FloeDecryptorAesGcm = FloeDecryptor<Aes256Gcm, HmacSha384, 32, 64>;
 
+    /// Helper to read and decode a test vector.
     fn read_hex_file(file_name: &str) -> Vec<u8> {
         let data =
             std::fs::read_to_string(file_name).expect("should be able to read the test vector");
@@ -143,6 +144,8 @@ mod tests {
 
             let segment = Segment::from_bytes(segment, is_final)
                 .expect("We should be able to parse the segment");
+
+            assert_eq!(is_final, segment.is_final());
 
             let buffer = &mut plaintext_segment[..segment.plaintext_size()];
 
