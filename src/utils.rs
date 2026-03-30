@@ -21,8 +21,15 @@ use crate::{
     types::{FloeIv, segment::SEGMENT_HEADER_LENGTH},
 };
 
+/// The length of the encoded parameters.
+///
+/// Is always 10 bytes long.
 pub(crate) const PARAMETER_INFO_LENGTH: usize = 10;
 
+/// Calculate how many bytes an encrypted segment would contain in addition to the ciphertext.
+///
+/// This value depends on the chosen AEAD as a segment will contain a nonce and a AEAD tag. For
+/// more info about an segment, take a look at the [`crate::types::segment::Segment`] struct.
 pub(crate) const fn segment_overhead<A>() -> usize
 where
     A: AeadCore,
@@ -33,6 +40,11 @@ where
     nonce_size + tag_size + SEGMENT_HEADER_LENGTH
 }
 
+/// Encode the set of Floe parameters into a byte array.
+///
+/// This is the `PARAM_ENCODE(params) -> bytes` function from the [spec].
+///
+/// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
 pub(crate) fn encoded_parameters<H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
 where
     H: FloeKdf,
@@ -44,13 +56,13 @@ where
     // KDF_IF
     output[1] = <H as FloeKdf>::KDF_ID;
 
+    // The segment length, encoded as a big-endian value.
     let segment_length = S.to_be_bytes();
     output[2..6].copy_from_slice(&segment_length);
 
-    // TODO: This try_from call probably means that our IV length parameter needs to be a USIZE
-    // type with a Sub<u32> constraint like we have for the header tag size. Or make N just a u32?
+    // The floe IV length, needs to converted to an u32 as the Floe spec expects 4 bytes.
+    // See the TODO item in the floe_iv.rs file how we can avoid this panic in the future.
     let floe_iv_length = u32::try_from(N).unwrap();
-
     let floe_iv_length = floe_iv_length.to_be_bytes();
     output[6..].copy_from_slice(&floe_iv_length);
 
@@ -69,7 +81,7 @@ where
 {
     let params = encoded_parameters::<H, N, S>();
 
-    // TODO: This should probably use the HKDF crate to make it more clear that this should be a
+    // TODO: This should probably use the Hkdf crate to make it more clear that this should be a
     // KDF, not a MAC.
     // Shouldn't matter for correctness, but would make this more obvious.
     let output = <H as KeyInit>::new_from_slice(key)
@@ -81,6 +93,7 @@ where
         .chain_update(&[1])
         .finalize();
 
-    // TODO: This is a move of an Array.
+    // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
+    // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.
     output
 }

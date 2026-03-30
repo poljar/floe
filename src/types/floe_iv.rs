@@ -16,6 +16,11 @@
 use aead::rand_core::UnwrapErr;
 use rand::{Rng, rngs::SysRng};
 
+// TODO: We could use `const N: u16` for the generics here, this would be enough for any IV someone
+// would like to configure and would have `Into` implementations for `usize` as well as `uszie`.
+// This would ensure at compile time that the IV isn't too big. Sadly this requires the
+// `generic_const_exprs` feature which is only available on Rust nightly.
+
 #[derive(Debug, Clone, Copy)]
 pub struct FloeIv<const N: usize> {
     inner: [u8; N],

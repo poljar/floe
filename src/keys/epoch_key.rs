@@ -31,6 +31,18 @@ where
 }
 
 impl<A: AeadInOut + KeyInit> EpochKey<A> {
+    /// Encrypt a single segment using this [`EpochKey`].
+    ///
+    /// The segment needs to be prepared before this method is called. Namely the
+    /// [`SegmentMut::ciphertext`] field needs to contain the plaintext. This will be in-place
+    /// replaced with the ciphertext by the AEAD.
+    ///
+    /// The [`SegmentMut::header`], [`SegmentMut::nonce`], and [`SegmentMut::tag`] on the other hand
+    /// will be filled out by this method.
+    ///
+    /// This implements the second part of the `encryptSegment` method from the [spec].
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn encrypt_segment(self, segment: SegmentMut<'_, A>) -> Result<()> {
         // TODO: We should let the user provide the RNG?
         let mut rng = UnwrapErr(SysRng);
@@ -65,6 +77,11 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         Ok(())
     }
 
+    /// Decrypt a single segment using this [`EpochKey`].
+    ///
+    /// This implements the second part of the `decryptSegment` method from the [spec].
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn decrypt_segment(self, segment: &Segment<'_, A>, buffer: &mut [u8]) -> Result<()> {
         debug_assert_eq!(
             segment.ciphertext.len(),
@@ -85,6 +102,14 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         )
     }
 
+    /// Create an array of associated data for the segment encryption/decryption.
+    ///
+    /// This is not the same associated data the caller has given us. This associated data binds
+    /// the segment number and whether the segment is the final one to the ciphertext.
+    ///
+    /// This implements a part of the `encryptSegment` and `decryptSegment` function from the [spec].
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     fn build_segment_associated_data(&self) -> [u8; 9] {
         let mut aad = [0u8; 9];
         let aad_tail = self.is_final as u8;

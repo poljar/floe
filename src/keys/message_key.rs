@@ -41,6 +41,15 @@ where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
+    /// Create an epoch key for the given segment.
+    ///
+    /// This implements the `DERIVE_KEY()` function from the [spec], defined as:
+    ///
+    /// ```text
+    /// FLOE_KDF(key, iv, aad, "DEK:" || I2BE(MASK(segmentNumber, AEAD_ROTATION_MASK), 8), AEAD_KEY_LEN)
+    /// ```
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
     pub(crate) fn derive_epoch_key<const N: usize, const S: u32>(
         &self,
         floe_iv: &FloeIv<N>,
@@ -55,12 +64,16 @@ where
         // TODO: Make the rotation mask configurable.
         const ROTATION_MASK: u64 = !((1u64 << 20) - 1);
 
+        // The rotation mask decides how many segments will be encrypted using the same epoch key.
         let masked_counter = segment_number & ROTATION_MASK;
 
+        // The purpose will include the segment number, this binds the key to this specific segment.
         let mut purpose = [0u8; 12];
         purpose[..4].copy_from_slice(b"DEK:");
         purpose[4..].copy_from_slice(&masked_counter.to_be_bytes());
 
+        // We're not reusing the `crate::utils::floe_kdf` function here for type safety reasons.
+        // We're using the `FloeKdfKey<H>` here, while the `floe_kdf` function expects a `Key<A>`.
         let output = <H as KeyInit>::new_from_slice(&self.key)
             .unwrap()
             .chain_update(encoded_parameters::<H, N, S>())
@@ -70,6 +83,8 @@ where
             .chain_update(&[1])
             .finalize();
 
+        // Split the output. The key will reuse the same memory the original output used, avoiding
+        // any copying. We discard the rest of the output.
         let (key, _) = Array::split::<<A as KeySizeUser>::KeySize>(output.into_bytes());
 
         EpochKey {
