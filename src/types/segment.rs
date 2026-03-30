@@ -37,11 +37,12 @@ fn ciphertext_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message_length - A::TagSize::USIZE
 }
 
-pub(crate) struct Segment<'a, A>
+// TODO: Should the segment know about the expected segment size?
+pub struct Segment<'a, A>
 where
     A: AeadInOut,
 {
-    pub(crate) header: [u8; SEGMENT_HEADER_LENGTH],
+    pub(crate) header: &'a [u8; SEGMENT_HEADER_LENGTH],
     pub(crate) nonce: Nonce<A>,
     pub(crate) ciphertext: &'a [u8],
     pub(crate) tag: Tag<A>,
@@ -51,7 +52,7 @@ impl<'a, A> Segment<'a, A>
 where
     A: AeadInOut,
 {
-    pub(crate) fn from_bytes(message: &'a [u8], is_final: bool) -> Result<Self> {
+    pub fn from_bytes(message: &'a [u8], is_final: bool) -> Result<Self> {
         // TODO: Check the message length here.
 
         let header_slice = &message[HEADER_RANGE];
@@ -61,11 +62,10 @@ where
         let ciphertext = &message
             [SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message.len() - A::TagSize::USIZE];
 
-        let nonce = Nonce::<A>::from_iter(nonce.into_iter().map(|b| *b));
-        let tag = Tag::<A>::from_iter(tag.into_iter().map(|b| *b));
+        let nonce = Nonce::<A>::try_from(nonce).unwrap();
+        let tag = Tag::<A>::try_from(tag).unwrap();
 
-        let mut header = [0u8; SEGMENT_HEADER_LENGTH];
-        header.copy_from_slice(header_slice);
+        let header: &[u8; SEGMENT_HEADER_LENGTH] = header_slice.try_into().unwrap();
 
         let segment = Self {
             header,
@@ -83,8 +83,12 @@ where
         Ok(segment)
     }
 
-    fn is_final(&self) -> bool {
-        self.header != NON_FINAL_SEGMENT_HEADER
+    pub fn is_final(&self) -> bool {
+        self.header != &NON_FINAL_SEGMENT_HEADER
+    }
+
+    pub fn plaintext_size(&self) -> usize {
+        self.ciphertext.len()
     }
 }
 

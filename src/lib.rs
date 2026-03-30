@@ -49,7 +49,10 @@ impl FloeKdf for Hmac<Sha384> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{keys::FloeKdfKey, types::Header};
+    use crate::{
+        keys::FloeKdfKey,
+        types::{Header, segment::Segment},
+    };
 
     use super::*;
     use aead::Key;
@@ -88,8 +91,11 @@ mod tests {
 
         let mut decryption_buffer = vec![0u8; 11];
 
+        let segment =
+            Segment::from_bytes(&buffer, true).expect("We should be able to parse the segment");
+
         decryptor
-            .decrypt_segment(&buffer, &mut decryption_buffer, 0, true)
+            .decrypt_segment(&segment, &mut decryption_buffer, 0, true)
             .unwrap();
 
         assert_eq!(
@@ -121,21 +127,20 @@ mod tests {
         let decryptor = FloeDecryptorAesGcm::new(&key, AAD, &header).unwrap();
 
         let mut decrypted: Vec<u8> = vec![];
-        let mut plaintext_segment = vec![0u8; FloeDecryptorAesGcm::output_size()];
+        let mut plaintext_segment = vec![0u8; FloeDecryptorAesGcm::plaintext_size()];
         let segments = ciphertext[header_length..].chunks(64);
         let num_segments = segments.len();
 
         for (segment_number, segment) in segments.enumerate() {
             let is_final = segment_number == num_segments - 1;
 
-            let buffer = if is_final {
-                &mut plaintext_segment[..FloeDecryptorAesGcm::final_segment_output_size(segment)]
-            } else {
-                &mut plaintext_segment
-            };
+            let segment = Segment::from_bytes(segment, is_final)
+                .expect("We should be able to parse the segment");
+
+            let buffer = &mut plaintext_segment[..segment.plaintext_size()];
 
             decryptor
-                .decrypt_segment(segment, buffer, segment_number as u64, is_final)
+                .decrypt_segment(&segment, buffer, segment_number as u64, is_final)
                 .expect("should be able to decrypt the segment");
 
             decrypted.extend_from_slice(buffer);

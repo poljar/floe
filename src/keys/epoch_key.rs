@@ -65,7 +65,7 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         Ok(())
     }
 
-    pub(crate) fn decrypt_segment(self, segment: Segment<'_, A>, buffer: &mut [u8]) -> Result<()> {
+    pub(crate) fn decrypt_segment(self, segment: &Segment<'_, A>, buffer: &mut [u8]) -> Result<()> {
         debug_assert_eq!(
             segment.ciphertext.len(),
             buffer.len(),

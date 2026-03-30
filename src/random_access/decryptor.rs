@@ -71,25 +71,18 @@ where
         }
     }
 
-    pub fn output_size() -> usize {
+    pub const fn plaintext_size() -> usize {
         // TODO: unsafe cast
         S as usize - segment_overhead::<A>()
     }
 
-    pub const fn final_segment_output_size(segment: &[u8]) -> usize {
-        segment.len() - segment_overhead::<A>()
-    }
-
     pub fn decrypt_segment(
         &self,
-        segment: &[u8],
+        segment: &Segment<A>,
         buffer: &mut [u8],
         segment_number: u64,
         is_final: bool,
     ) -> Result<()> {
-        // TODO: Make the Segment public and let users decode it outside of the decrypt method?
-        let segment = Segment::from_bytes(segment, is_final).unwrap();
-
         if segment.ciphertext.len() == buffer.len() {
             let epoch_key = self.message_key.derive_epoch_key::<N, S>(
                 &self.floe_iv,
