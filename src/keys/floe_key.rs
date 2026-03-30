@@ -31,23 +31,22 @@ use crate::{
     utils::floe_kdf,
 };
 
-// TODO: Derive zeroize under a feature flag.
-pub struct FloeKey<A, H>
+pub struct FloeKey<'a, A, H>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
-    key: Key<A>,
+    key: &'a Key<A>,
     _phantom_aead: PhantomData<A>,
     _phantom: PhantomData<H>,
 }
 
-impl<A, H> FloeKey<A, H>
+impl<'a, A, H> FloeKey<'a, A, H>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
-    pub fn new(key: Key<A>) -> Self {
+    pub fn new(key: &'a Key<A>) -> Self {
         Self {
             key,
             _phantom_aead: PhantomData::default(),

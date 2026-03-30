@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn test_aes_gcm() {
         let key = Key::<Aes256Gcm>::try_from([0u8; 32].as_slice()).unwrap();
-        let encryptor = FloeEncryptorAesGcm::new(key, &[]);
+        let encryptor = FloeEncryptorAesGcm::new(&key, &[]);
 
         let plaintext = b"Hello world";
         let output_size = encryptor.output_size(plaintext);
@@ -84,7 +84,7 @@ mod tests {
 
         let header = encryptor.header();
 
-        let decryptor = FloeDecryptorAesGcm::new(key, &[], header).unwrap();
+        let decryptor = FloeDecryptorAesGcm::new(&key, &[], header).unwrap();
 
         let mut decryption_buffer = vec![0u8; 11];
 
@@ -118,7 +118,7 @@ mod tests {
 
         let key = Key::<Aes256Gcm>::try_from([0u8; 32].as_slice())
             .expect("should be able to create a zero key");
-        let decryptor = FloeDecryptorAesGcm::new(key, AAD, &header).unwrap();
+        let decryptor = FloeDecryptorAesGcm::new(&key, AAD, &header).unwrap();
 
         let mut decrypted: Vec<u8> = vec![];
         let mut plaintext_segment = vec![0u8; FloeDecryptorAesGcm::output_size()];

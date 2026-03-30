@@ -47,7 +47,7 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
-    pub fn new(key: Key<A>, associated_data: &[u8], header: &Header<N>) -> Result<Self> {
+    pub fn new(key: &Key<A>, associated_data: &[u8], header: &Header<N>) -> Result<Self> {
         let floe_key = FloeKey::new(key);
 
         let expected_parameters = encoded_parameters::<N, S>();

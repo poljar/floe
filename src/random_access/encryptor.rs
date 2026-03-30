@@ -46,7 +46,7 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
-    pub fn new(key: Key<A>, associated_data: &[u8]) -> Self {
+    pub fn new(key: &Key<A>, associated_data: &[u8]) -> Self {
         let floe_key = FloeKey::new(key);
         let floe_iv = FloeIv::generate();
 
