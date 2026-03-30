@@ -26,7 +26,6 @@ use super::message_key::MessageKey;
 
 use crate::{
     FloeKdf,
-    keys::FloeKdfKey,
     types::{FloeIv, HeaderTag},
     utils::floe_kdf,
 };
@@ -83,9 +82,7 @@ where
         const PURPOSE: &[u8] = b"MESSAGE_KEY:";
 
         let output = floe_kdf::<A, H, N, S>(&self.key, floe_iv, associated_data, PURPOSE);
-
-        let (output, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
-        let key = FloeKdfKey::<H>::from_iter(output);
+        let (key, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
 
         MessageKey {
             key,

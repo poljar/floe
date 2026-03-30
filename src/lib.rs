@@ -49,10 +49,7 @@ impl FloeKdf for Hmac<Sha384> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        keys::FloeKdfKey,
-        types::{Header, segment::Segment},
-    };
+    use crate::types::{Header, segment::Segment};
 
     use super::*;
     use aead::Key;
@@ -107,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_invalid_key_length() {
-        let key = FloeKdfKey::<HmacSha384>::try_from([0u8; 33].as_slice());
+        let key = Key::<HmacSha384>::try_from([0u8; 33].as_slice());
         key.expect_err("We should not be able to create a floe KDF key with an invalid size");
     }
 
