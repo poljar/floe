@@ -54,7 +54,7 @@ where
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
         let header = Header {
-            parameter_info: encoded_parameters::<N, S>(),
+            parameter_info: encoded_parameters::<H, N, S>(),
             floe_iv,
             tag: header_tag,
         };

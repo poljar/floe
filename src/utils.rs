@@ -33,13 +33,16 @@ where
     nonce_size + tag_size + SEGMENT_HEADER_LENGTH
 }
 
-pub(crate) fn encoded_parameters<const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH] {
+pub(crate) fn encoded_parameters<H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
+where
+    H: FloeKdf,
+{
     let mut output = [0u8; PARAMETER_INFO_LENGTH];
 
     // AEAD_ID
     output[0] = 0x00;
     // KDF_IF
-    output[1] = 0x00;
+    output[1] = <H as FloeKdf>::KDF_ID;
 
     let segment_length = S.to_be_bytes();
     output[2..6].copy_from_slice(&segment_length);
@@ -64,8 +67,11 @@ where
     A: AeadCore + KeySizeUser,
     H: FloeKdf,
 {
-    let params = encoded_parameters::<N, S>();
+    let params = encoded_parameters::<H, N, S>();
 
+    // TODO: This should probably use the HKDF crate to make it more clear that this should be a
+    // KDF, not a MAC.
+    // Shouldn't matter for correctness, but would make this more obvious.
     let output = <H as KeyInit>::new_from_slice(key)
         .unwrap()
         .chain_update(params)

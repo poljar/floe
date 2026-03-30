@@ -32,10 +32,20 @@ pub trait FloeKdf: Mac + KeyInit {
     ///
     /// [specification]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#parameters
     type KeySize: ArraySize;
+
+    /// The unique numeric identifier of this KDF implementation.
+    ///
+    /// Will be used in the [Floe header] as part of the parameters.
+    ///
+    /// [Floe header]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#floe-ciphertext-layout
+    const KDF_ID: u8;
 }
 
 impl FloeKdf for Hmac<Sha384> {
+    // As per the Floe spec defined in the derived parameters part:
+    // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
     type KeySize = U48;
+    const KDF_ID: u8 = 0;
 }
 
 // TODO: Add a similar trait for the AEAD as we need to encode the AEAD_ID, AEAD_ROTATION_MASK,

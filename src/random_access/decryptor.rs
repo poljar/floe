@@ -50,15 +50,15 @@ where
     pub fn new(key: &Key<A>, associated_data: &[u8], header: &Header<N>) -> Result<Self> {
         let floe_key = FloeKey::new(key);
 
-        let expected_parameters = encoded_parameters::<N, S>();
+        let expected_parameters = encoded_parameters::<H, N, S>();
         let expected_tag = floe_key.derive_header_tag::<N, S>(&header.floe_iv, associated_data);
         // TODO: Should we use Mac::verify() here?
         let is_header_tag_valid: bool = expected_tag.ct_eq(&header.tag).into();
 
-        if header.parameter_info != expected_parameters {
-            todo!("The parameters don't match")
-        } else if !is_header_tag_valid {
+        if !is_header_tag_valid {
             todo!("Header tag is not valid")
+        } else if header.parameter_info != expected_parameters {
+            todo!("The parameters don't match")
         } else {
             let message_key = floe_key.derive_message_key::<N, S>(&header.floe_iv, associated_data);
             let floe_iv = header.floe_iv;

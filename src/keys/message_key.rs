@@ -63,7 +63,7 @@ where
 
         let output = <H as KeyInit>::new_from_slice(&self.key)
             .unwrap()
-            .chain_update(encoded_parameters::<N, S>())
+            .chain_update(encoded_parameters::<H, N, S>())
             .chain_update(floe_iv.as_bytes())
             .chain_update(purpose)
             .chain_update(associated_data)
