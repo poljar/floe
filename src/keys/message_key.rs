@@ -15,7 +15,7 @@
 
 use std::{marker::PhantomData, ops::Sub};
 
-use crate::{FloeKdf, keys::FloeKdfKey, types::FloeIv, utils::encoded_parameters};
+use crate::{FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_parameters};
 
 use aead::{
     AeadInOut, KeySizeUser,

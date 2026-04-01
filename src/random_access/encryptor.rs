@@ -19,9 +19,9 @@ use aead::{AeadInOut, Key, KeyInit, KeySizeUser, Result, array::ArraySize, const
 use digest::OutputSizeUser;
 
 use crate::{
-    FloeKdf,
+    FloeKdf, Header,
     keys::{FloeKey, MessageKey},
-    types::{FloeIv, Header, segment::SegmentMut},
+    types::{floe_iv::FloeIv, segment::SegmentMut},
     utils::{encoded_parameters, segment_overhead},
 };
 

@@ -16,5 +16,5 @@
 mod decryptor;
 mod encryptor;
 
-pub use decryptor::*;
-pub use encryptor::*;
+pub use decryptor::FloeDecryptor;
+pub use encryptor::FloeEncryptor;

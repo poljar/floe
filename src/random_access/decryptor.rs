@@ -22,7 +22,7 @@ use subtle::ConstantTimeEq;
 use crate::{
     FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{FloeIv, Header, segment::Segment},
+    types::{floe_iv::FloeIv, header::Header, segment::Segment},
     utils::{encoded_parameters, segment_overhead},
 };
 

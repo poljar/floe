@@ -18,7 +18,7 @@ use digest::{KeyInit, typenum::Unsigned};
 
 use crate::{
     FloeKdf,
-    types::{FloeIv, segment::SEGMENT_HEADER_LENGTH},
+    types::{floe_iv::FloeIv, segment::SEGMENT_HEADER_LENGTH},
 };
 
 /// The length of the encoded parameters.

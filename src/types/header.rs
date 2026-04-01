@@ -17,7 +17,7 @@ use aead::{array::Array, consts::U32};
 use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
 
-use crate::{types::FloeIv, utils::PARAMETER_INFO_LENGTH};
+use crate::{types::floe_iv::FloeIv, utils::PARAMETER_INFO_LENGTH};
 
 pub(crate) type HeaderTagSize = U32;
 

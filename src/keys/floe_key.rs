@@ -26,7 +26,7 @@ use super::message_key::MessageKey;
 
 use crate::{
     FloeKdf,
-    types::{FloeIv, HeaderTag},
+    types::{floe_iv::FloeIv, header::HeaderTag},
     utils::floe_kdf,
 };
 

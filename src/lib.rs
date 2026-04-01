@@ -24,6 +24,7 @@ use hmac::Hmac;
 use sha2::Sha384;
 
 pub use random_access::*;
+pub use types::{header::Header, segment::Segment};
 
 pub trait FloeKdf: Mac + KeyInit {
     /// The length of the KDF key.
@@ -59,7 +60,7 @@ impl FloeKdf for Hmac<Sha384> {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Header, segment::Segment};
+    use crate::types::segment::Segment;
 
     use super::*;
     use aead::Key;

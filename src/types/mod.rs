@@ -13,9 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod floe_iv;
-mod header;
+pub(crate) mod floe_iv;
+pub(crate) mod header;
 pub(crate) mod segment;
-
-pub(crate) use floe_iv::*;
-pub(crate) use header::*;
