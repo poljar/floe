@@ -100,8 +100,7 @@ mod tests {
 
         let mut decryption_buffer = vec![0u8; 11];
 
-        let segment =
-            Segment::from_bytes(&buffer, true).expect("We should be able to parse the segment");
+        let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
 
         decryptor
             .decrypt_segment(&segment, &mut decryption_buffer, 0, true)
@@ -143,8 +142,8 @@ mod tests {
         for (segment_number, segment) in segments.enumerate() {
             let is_final = segment_number == num_segments - 1;
 
-            let segment = Segment::from_bytes(segment, is_final)
-                .expect("We should be able to parse the segment");
+            let segment =
+                Segment::from_bytes(segment).expect("We should be able to parse the segment");
 
             assert_eq!(is_final, segment.is_final());
 

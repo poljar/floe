@@ -83,7 +83,13 @@ where
         segment_number: u64,
         is_final: bool,
     ) -> Result<()> {
-        if segment.ciphertext.len() == buffer.len() {
+        if is_final != segment.is_final() {
+            todo!(
+                "Error if the segment header tells us that the segment is final but the caller tells us otherwise"
+            )
+        } else if segment.ciphertext.len() != buffer.len() {
+            todo!("Error invalid buffer length")
+        } else {
             let epoch_key = self.message_key.derive_epoch_key::<N, S>(
                 &self.floe_iv,
                 &self.associated_data,
@@ -94,8 +100,6 @@ where
             epoch_key.decrypt_segment(segment, buffer)?;
 
             Ok(())
-        } else {
-            todo!("Error invalid buffer length")
         }
     }
 }

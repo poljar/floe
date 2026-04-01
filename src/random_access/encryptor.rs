@@ -101,21 +101,21 @@ where
         // If our plaintext doesn't fit into the output buffer, return an error.
         if segment.ciphertext.len() != plaintext.len() {
             todo!("The output buffer is too small")
+        } else {
+            // Now copy the plaintext into the ciphertext part of the output buffer, the AEAD will
+            // replace the plaintext bytes in-place with the ciphertext bytes.
+            segment.ciphertext.copy_from_slice(plaintext);
+
+            // Now we derive an epoch key for this segment.
+            let epoch_key = self.message_key.derive_epoch_key::<N, S>(
+                &self.header.floe_iv,
+                &self.associated_data,
+                segment_number,
+                is_final,
+            );
+
+            // And finally we encrypt the segment.
+            epoch_key.encrypt_segment(segment)
         }
-
-        // Now copy the plaintext into the ciphertext part of the output buffer, the AEAD will
-        // replace the plaintext bytes in-place with the ciphertext bytes.
-        segment.ciphertext.copy_from_slice(plaintext);
-
-        // Now we derive an epoch key for this segment.
-        let epoch_key = self.message_key.derive_epoch_key::<N, S>(
-            &self.header.floe_iv,
-            &self.associated_data,
-            segment_number,
-            is_final,
-        );
-
-        // And finally we encrypt the segment.
-        epoch_key.encrypt_segment(segment)
     }
 }

@@ -43,16 +43,16 @@ where
     A: AeadInOut,
 {
     pub(crate) header: &'a [u8; SEGMENT_HEADER_LENGTH],
-    pub(crate) nonce: Nonce<A>,
+    pub(crate) nonce: &'a Nonce<A>,
     pub(crate) ciphertext: &'a [u8],
-    pub(crate) tag: Tag<A>,
+    pub(crate) tag: &'a Tag<A>,
 }
 
 impl<'a, A> Segment<'a, A>
 where
     A: AeadInOut,
 {
-    pub fn from_bytes(message: &'a [u8], is_final: bool) -> Result<Self> {
+    pub fn from_bytes(message: &'a [u8]) -> Result<Self> {
         // TODO: Check the message length here.
 
         let header_slice = &message[HEADER_RANGE];
@@ -62,8 +62,8 @@ where
         let ciphertext = &message
             [SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message.len() - A::TagSize::USIZE];
 
-        let nonce = Nonce::<A>::try_from(nonce).unwrap();
-        let tag = Tag::<A>::try_from(tag).unwrap();
+        let nonce = nonce.try_into().unwrap();
+        let tag = tag.try_into().unwrap();
 
         let header: &[u8; SEGMENT_HEADER_LENGTH] = header_slice.try_into().unwrap();
 
@@ -73,12 +73,6 @@ where
             ciphertext,
             tag,
         };
-
-        if is_final != segment.is_final() {
-            todo!(
-                "Error if the segment header tells us that the segment is final but the caller tells us otherwise"
-            )
-        }
 
         Ok(segment)
     }
