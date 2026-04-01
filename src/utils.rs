@@ -84,16 +84,16 @@ where
     // TODO: This should probably use the Hkdf crate to make it more clear that this should be a
     // KDF, not a MAC.
     // Shouldn't matter for correctness, but would make this more obvious.
-    let output = <H as KeyInit>::new_from_slice(key)
+    
+
+    // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
+    // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.
+    <H as KeyInit>::new_from_slice(key)
         .unwrap()
         .chain_update(params)
         .chain_update(floe_iv.as_bytes())
         .chain_update(purpose)
         .chain_update(associated_data)
-        .chain_update(&[1])
-        .finalize();
-
-    // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
-    // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.
-    output
+        .chain_update([1])
+        .finalize()
 }

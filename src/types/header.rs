@@ -55,11 +55,12 @@ impl ConstantTimeEq for HeaderTag {
 #[derive(Debug, Clone)]
 pub struct Header<const N: usize> {
     pub(crate) parameter_info: [u8; PARAMETER_INFO_LENGTH],
-    pub(crate) floe_iv: super::floe_iv::FloeIv<N>,
+    pub(crate) floe_iv: FloeIv<N>,
     pub(crate) tag: HeaderTag,
 }
 
 impl<const N: usize> Header<N> {
+    #[allow(clippy::result_unit_err)]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
         // TODO: check if we have the correct length
 

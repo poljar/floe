@@ -35,7 +35,7 @@ use crate::{
 /// As per [spec], must be the same size as the AEAD key.
 ///
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#key-generation
-pub struct FloeKey<'a, A, H>
+pub(crate) struct FloeKey<'a, A, H>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
@@ -54,8 +54,8 @@ where
     pub(crate) fn new(key: &'a Key<A>) -> Self {
         Self {
             key,
-            _phantom_aead: PhantomData::default(),
-            _phantom: PhantomData::default(),
+            _phantom_aead: PhantomData,
+            _phantom: PhantomData,
         }
     }
 
@@ -80,7 +80,7 @@ where
     {
         const PURPOSE: &[u8] = b"HEADER_TAG:";
 
-        let output = floe_kdf::<A, H, N, S>(&self.key, floe_iv, associated_data, PURPOSE);
+        let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
         let (inner, _) = Array::split::<U32>(output.into_bytes());
 
         HeaderTag { inner }
@@ -107,13 +107,13 @@ where
     {
         const PURPOSE: &[u8] = b"MESSAGE_KEY:";
 
-        let output = floe_kdf::<A, H, N, S>(&self.key, floe_iv, associated_data, PURPOSE);
+        let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
         let (key, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
 
         MessageKey {
             key,
-            _phantom_aead: PhantomData::default(),
-            _phantom: PhantomData::default(),
+            _phantom_aead: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }

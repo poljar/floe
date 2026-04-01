@@ -95,10 +95,10 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         buffer.copy_from_slice(segment.ciphertext);
 
         aead.decrypt_inout_detached(
-            &segment.nonce,
+            segment.nonce,
             &associated_data,
             buffer.into(),
-            &segment.tag,
+            segment.tag,
         )
     }
 

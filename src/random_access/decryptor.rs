@@ -78,7 +78,7 @@ where
 
     pub fn decrypt_segment(
         &self,
-        segment: &Segment<A>,
+        segment: &Segment<'_, A>,
         buffer: &mut [u8],
         segment_number: u64,
         is_final: bool,

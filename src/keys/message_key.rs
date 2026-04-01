@@ -26,7 +26,7 @@ use digest::{KeyInit, OutputSizeUser};
 use super::epoch_key::EpochKey;
 
 // TODO: Derive zeroize under a feature flag.
-pub struct MessageKey<A, H>
+pub(crate) struct MessageKey<A, H>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
@@ -80,7 +80,7 @@ where
             .chain_update(floe_iv.as_bytes())
             .chain_update(purpose)
             .chain_update(associated_data)
-            .chain_update(&[1])
+            .chain_update([1])
             .finalize();
 
         // Split the output. The key will reuse the same memory the original output used, avoiding
