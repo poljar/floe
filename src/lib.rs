@@ -21,10 +21,8 @@ mod utils;
 
 pub mod random_access;
 
-use aead::{array::ArraySize, consts::U48};
+use aead::array::ArraySize;
 use digest::{KeyInit, Mac};
-use hmac::Hmac;
-use sha2::Sha384;
 
 pub use types::{header::Header, segment::Segment};
 
@@ -44,10 +42,11 @@ pub trait FloeKdf: Mac + KeyInit {
     const KDF_ID: u8;
 }
 
-impl FloeKdf for Hmac<Sha384> {
+#[cfg(feature = "floe-gcm")]
+impl FloeKdf for hmac::Hmac<sha2::Sha384> {
     // As per the Floe spec defined in the derived parameters part:
     // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
-    type KeySize = U48;
+    type KeySize = aead::consts::U48;
     const KDF_ID: u8 = 0;
 }
 
@@ -60,5 +59,5 @@ impl FloeKdf for Hmac<Sha384> {
 //
 // TODO: Additionally add methods where the user doesn't need to allocate buffers.
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(all(test, feature = "std", feature = "floe-gcm"))]
 mod tests;
