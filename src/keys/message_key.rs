@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{marker::PhantomData, ops::Sub};
+use core::{marker::PhantomData, ops::Sub};
 
 use crate::{FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_parameters};
 

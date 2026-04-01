@@ -28,6 +28,11 @@ unreachable = "deny"
 # unwrap_used = "deny"
 mem_forget = "deny"
 
+[features]
+default = ["std"]
+
+std = []
+
 [dependencies]
 aead = "0.6.0-rc.10"
 digest = { version = "0.11.2", features = ["mac"] }

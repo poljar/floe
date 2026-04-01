@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 mod keys;
 mod types;
 mod utils;
@@ -56,7 +58,7 @@ impl FloeKdf for Hmac<Sha384> {
 // TODO: Add the higher level public streaming/online functions
 // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
 //
-// TODO: Additionally add methods where you don't need to allocate manually.
+// TODO: Additionally add methods where the user doesn't need to allocate buffers.
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests;

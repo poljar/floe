@@ -25,8 +25,8 @@ use crate::{
 
 type HmacSha384 = Hmac<Sha384>;
 
-type FloeEncryptorAesGcm = FloeEncryptor<Aes256Gcm, HmacSha384, 32, 64>;
-type FloeDecryptorAesGcm = FloeDecryptor<Aes256Gcm, HmacSha384, 32, 64>;
+type FloeEncryptorAesGcm = FloeEncryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
+type FloeDecryptorAesGcm = FloeDecryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
 
 /// Helper to read and decode a test vector.
 fn read_hex_file(file_name: &str) -> Vec<u8> {

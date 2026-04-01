@@ -21,7 +21,7 @@ use crate::{types::floe_iv::FloeIv, utils::PARAMETER_INFO_LENGTH};
 
 pub(crate) type HeaderTagSize = U32;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HeaderTag {
     pub(crate) inner: Array<u8, HeaderTagSize>,
 }
@@ -52,7 +52,7 @@ impl ConstantTimeEq for HeaderTag {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Header<const N: usize> {
     pub(crate) parameter_info: [u8; PARAMETER_INFO_LENGTH],
     pub(crate) floe_iv: FloeIv<N>,
@@ -85,6 +85,7 @@ impl<const N: usize> Header<N> {
     }
 
     // TODO: This should go behind an alloc feature flag.
+    #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Vec<u8> {
         todo!()
     }

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::ops::Sub;
+use core::ops::Sub;
 
 use aead::{AeadInOut, Key, KeyInit, KeySizeUser, Result, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
@@ -26,17 +26,17 @@ use crate::{
     utils::{encoded_parameters, segment_overhead},
 };
 
-pub struct FloeDecryptor<A, H, const N: usize, const S: u32>
+pub struct FloeDecryptor<'a, A, H, const N: usize, const S: u32>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
     message_key: MessageKey<A, H>,
     floe_iv: FloeIv<N>,
-    associated_data: Vec<u8>,
+    associated_data: &'a [u8],
 }
 
-impl<A, H, const N: usize, const S: u32> FloeDecryptor<A, H, N, S>
+impl<'a, A, H, const N: usize, const S: u32> FloeDecryptor<'a, A, H, N, S>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
@@ -47,7 +47,7 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
-    pub fn new(key: &Key<A>, associated_data: &[u8], header: &Header<N>) -> Result<Self> {
+    pub fn new(key: &Key<A>, associated_data: &'a [u8], header: &Header<N>) -> Result<Self> {
         let floe_key = FloeKey::new(key);
 
         let expected_parameters = encoded_parameters::<H, N, S>();
@@ -66,7 +66,7 @@ where
             Ok(Self {
                 message_key,
                 floe_iv,
-                associated_data: associated_data.to_owned(),
+                associated_data,
             })
         }
     }

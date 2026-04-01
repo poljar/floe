@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::ops::Sub;
+use core::ops::Sub;
 
 use aead::{AeadInOut, Key, KeyInit, KeySizeUser, Result, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
@@ -25,17 +25,17 @@ use crate::{
     utils::{encoded_parameters, segment_overhead},
 };
 
-pub struct FloeEncryptor<A, H, const N: usize, const S: u32>
+pub struct FloeEncryptor<'a, A, H, const N: usize, const S: u32>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
     message_key: MessageKey<A, H>,
     header: Header<N>,
-    associated_data: Vec<u8>,
+    associated_data: &'a [u8],
 }
 
-impl<A, H, const N: usize, const S: u32> FloeEncryptor<A, H, N, S>
+impl<'a, A, H, const N: usize, const S: u32> FloeEncryptor<'a, A, H, N, S>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
@@ -46,7 +46,7 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
-    pub fn new(key: &Key<A>, associated_data: &[u8]) -> Self {
+    pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
         let floe_key = FloeKey::new(key);
         let floe_iv = FloeIv::generate();
 
@@ -62,7 +62,7 @@ where
         Self {
             message_key,
             header,
-            associated_data: associated_data.to_owned(),
+            associated_data,
         }
     }
 
