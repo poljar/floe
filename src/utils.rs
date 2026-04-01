@@ -84,7 +84,6 @@ where
     // TODO: This should probably use the Hkdf crate to make it more clear that this should be a
     // KDF, not a MAC.
     // Shouldn't matter for correctness, but would make this more obvious.
-    
 
     // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
     // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.

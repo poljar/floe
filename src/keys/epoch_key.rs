@@ -94,12 +94,7 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
 
         buffer.copy_from_slice(segment.ciphertext);
 
-        aead.decrypt_inout_detached(
-            segment.nonce,
-            &associated_data,
-            buffer.into(),
-            segment.tag,
-        )
+        aead.decrypt_inout_detached(segment.nonce, &associated_data, buffer.into(), segment.tag)
     }
 
     /// Create an array of associated data for the segment encryption/decryption.

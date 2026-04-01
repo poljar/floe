@@ -13,13 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::types::segment::Segment;
-
-use super::*;
 use aead::Key;
 use aes_gcm::Aes256Gcm;
 use hmac::Hmac;
 use sha2::Sha384;
+
+use crate::{
+    Header, Segment,
+    random_access::{FloeDecryptor, FloeEncryptor},
+};
 
 type HmacSha384 = Hmac<Sha384>;
 

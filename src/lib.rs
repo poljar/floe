@@ -14,16 +14,16 @@
 // limitations under the License.
 
 mod keys;
-mod random_access;
 mod types;
 mod utils;
+
+pub mod random_access;
 
 use aead::{array::ArraySize, consts::U48};
 use digest::{KeyInit, Mac};
 use hmac::Hmac;
 use sha2::Sha384;
 
-pub use random_access::*;
 pub use types::{header::Header, segment::Segment};
 
 pub trait FloeKdf: Mac + KeyInit {
