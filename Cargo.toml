@@ -3,7 +3,7 @@ authors = ["Damir Jelić <poljar@termina.org.uk>"]
 name = "floe-rs"
 version = "0.1.0"
 edition = "2024"
-keywords = ["cryptography"]
+keywords = ["cryptography", "floe", "online-encryption", "random-access"]
 license = "Apache-2.0"
 rust-version = "1.93"
 
@@ -24,7 +24,7 @@ rust_2018_idioms = "deny"
 [lints.clippy]
 panic = "deny"
 unreachable = "deny"
-# expect_used = "deny"
+expect_used = "deny"
 # unwrap_used = "deny"
 mem_forget = "deny"
 

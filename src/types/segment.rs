@@ -20,20 +20,42 @@ use digest::typenum::Unsigned;
 
 use crate::utils::segment_overhead;
 
+/// The length of the segment header.
+///
+/// The segment header contains the length of a segment if the segment is the final segment or a
+/// placeholder in case the segment is non-final, namely [`NON_FINAL_SEGMENT_HEADER`].
+///
+/// Since this is 4 bytes long, this limits the encrypted segment size to [u32::MAX]. This means
+/// that the ciphertext and consequently the plaintext segment need to smaller than u32::MAX
+/// because the encrypted segment needs to fit the header, nonce, and tag into the allocated buffer.
 pub(crate) const SEGMENT_HEADER_LENGTH: usize = 4;
-pub(crate) const HEADER_RANGE: Range<usize> = 0..SEGMENT_HEADER_LENGTH;
+
+/// The segment header for any non-final encrypted segment.
 pub(crate) const NON_FINAL_SEGMENT_HEADER: [u8; SEGMENT_HEADER_LENGTH] =
     [0xFFu8; SEGMENT_HEADER_LENGTH];
 
-fn nonce_range<A: AeadInOut>() -> Range<usize> {
+/// Given a byte slice, this range determines where we should expect the header of the
+/// encrypted segment.
+const HEADER_RANGE: Range<usize> = 0..SEGMENT_HEADER_LENGTH;
+
+/// Given a byte slice, this range determines where we should expect the nonce of the
+/// encrypted segment.
+const fn nonce_range<A: AeadInOut>() -> Range<usize> {
     SEGMENT_HEADER_LENGTH..SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE
 }
 
-fn tag_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
+/// Given a byte slice, this range determines where we should expect the AEAD tag of the encrypted
+/// segment.
+///
+/// Since we're using a postfix tag, meaning the AEAD tag is appended at the end of the encrypted
+/// segment, the range depends on the length of the message.
+const fn tag_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     message_length - A::TagSize::USIZE..message_length
 }
 
-fn ciphertext_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
+/// Given a byte slice, this range determines where we should expect the ciphertext of the
+/// encrypted segment.
+const fn ciphertext_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message_length - A::TagSize::USIZE
 }
 
@@ -81,7 +103,7 @@ where
         self.header != &NON_FINAL_SEGMENT_HEADER
     }
 
-    pub fn plaintext_size(&self) -> usize {
+    pub const fn plaintext_size(&self) -> usize {
         self.ciphertext.len()
     }
 }

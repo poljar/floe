@@ -87,6 +87,9 @@ impl<const N: usize> Header<N> {
     // TODO: This should go behind an alloc feature flag.
     #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Vec<u8> {
+        // TODO: We could return an array here, but as with the FloeIv type, we would need the
+        // `generic_const_exprs` feature.
+        // let output = [0u8; Self::length()];
         todo!()
     }
 
@@ -102,7 +105,7 @@ impl<const N: usize> Header<N> {
         &self.tag
     }
 
-    pub fn length() -> usize {
+    pub const fn length() -> usize {
         PARAMETER_INFO_LENGTH + HeaderTagSize::USIZE + N
     }
 }

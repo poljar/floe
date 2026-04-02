@@ -25,6 +25,13 @@ use digest::{KeyInit, OutputSizeUser};
 
 use super::epoch_key::EpochKey;
 
+/// The [`MessageKey`] of a Floe session.
+///
+/// The message key is used as the root key for deriving the per-segment [`EpochKey`]s. The message
+/// key itself is derived from the [`crate::keys::FloeKey`].
+///
+/// The length of this key is determined by the picked KDF and defined in the `KDF_KEY_LEN`
+/// constant in the spec, or in the [`FloeKdf::KeySize`] type in this implementation.
 // TODO: Derive zeroize under a feature flag.
 pub(crate) struct MessageKey<A, H>
 where
@@ -41,7 +48,7 @@ where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
-    /// Create an epoch key for the given segment.
+    /// Create an [`EpochKey`] for the given segment.
     ///
     /// This implements the `DERIVE_KEY()` function from the [spec], defined as:
     ///

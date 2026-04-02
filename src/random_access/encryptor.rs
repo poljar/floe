@@ -25,14 +25,21 @@ use crate::{
     utils::{encoded_parameters, segment_overhead},
 };
 
+/// Exposes the FLOE random-access encryption APIs.
+///  
+/// The random-access APIs do not directly protect you against truncation attacks
+/// or prevent you from incorrectly encrypting the same segment multiple times.
 pub struct FloeEncryptor<'a, A, H, const N: usize, const S: u32>
 where
     A: AeadInOut + KeyInit,
     H: FloeKdf,
 {
-    message_key: MessageKey<A, H>,
+    /// The header of the Floe session.
     header: Header<N>,
+    /// The user-provided additional associated data.
     associated_data: &'a [u8],
+    /// The message key, used to derive the AEAD key for the segments.
+    message_key: MessageKey<A, H>,
 }
 
 impl<'a, A, H, const N: usize, const S: u32> FloeEncryptor<'a, A, H, N, S>
@@ -70,6 +77,10 @@ where
         segment_overhead::<A>() + plaintext.len()
     }
 
+    /// Get the header of this Floe encryption session.
+    ///
+    /// The header is usually prepended to the first encrypted segment. It will be needed to start
+    /// decrypting segments.
     pub fn header(&self) -> &Header<N> {
         &self.header
     }
@@ -102,10 +113,6 @@ where
         if segment.ciphertext.len() != plaintext.len() {
             todo!("The output buffer is too small")
         } else {
-            // Now copy the plaintext into the ciphertext part of the output buffer, the AEAD will
-            // replace the plaintext bytes in-place with the ciphertext bytes.
-            segment.ciphertext.copy_from_slice(plaintext);
-
             // Now we derive an epoch key for this segment.
             let epoch_key = self.message_key.derive_epoch_key::<N, S>(
                 &self.header.floe_iv,
@@ -115,7 +122,7 @@ where
             );
 
             // And finally we encrypt the segment.
-            epoch_key.encrypt_segment(segment)
+            epoch_key.encrypt_segment(segment, plaintext)
         }
     }
 }
