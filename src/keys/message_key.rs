@@ -81,8 +81,12 @@ where
 
         // We're not reusing the `crate::utils::floe_kdf` function here for type safety reasons.
         // We're using the `FloeKdfKey<H>` here, while the `floe_kdf` function expects a `Key<A>`.
+        #[allow(clippy::expect_used)]
         let output = <H as KeyInit>::new_from_slice(&self.key)
-            .unwrap()
+            .expect(
+                "the KDF input key material should be big enough as this is determined \
+                 by KDF_KEY_LEN parameter",
+            )
             .chain_update(encoded_parameters::<H, N, S>())
             .chain_update(floe_iv.as_bytes())
             .chain_update(purpose)

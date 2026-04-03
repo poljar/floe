@@ -37,12 +37,28 @@ where
     let nonce_size = <A as AeadCore>::NonceSize::USIZE;
     let tag_size = <A as AeadCore>::TagSize::USIZE;
 
+    // SAFETY: These additions are fine and can't overflow because no AEAD will have a nonce and
+    // tag size that wouldn't fit into a `usize`, even if the `usize` is `u16`.
     nonce_size + tag_size + SEGMENT_HEADER_LENGTH
+}
+
+pub(crate) fn plaintext_size<A, const S: u32>() -> usize
+where
+    A: AeadCore,
+{
+    #[allow(clippy::expect_used)]
+    (TryInto::<usize>::try_into(S).expect("The encrypted segment size should fit into a u32"))
+        .checked_sub(segment_overhead::<A>())
+        .expect("The encrypted segment size should be bigger than the segment overhead")
 }
 
 /// Encode the set of Floe parameters into a byte array.
 ///
 /// This is the `PARAM_ENCODE(params) -> bytes` function from the [spec].
+///
+/// # Panics
+///
+/// This function will panic if the Floe IV length (N) is too large, it needs to fit into a `u32`.
 ///
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
 pub(crate) fn encoded_parameters<H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
@@ -62,11 +78,42 @@ where
 
     // The floe IV length, needs to converted to an u32 as the Floe spec expects 4 bytes.
     // See the TODO item in the floe_iv.rs file how we can avoid this panic in the future.
-    let floe_iv_length = u32::try_from(N).unwrap();
+    #[allow(clippy::expect_used)]
+    let floe_iv_length =
+        u32::try_from(N).expect("the Floe IV is too long, it must be smaller than u32::MAX");
     let floe_iv_length = floe_iv_length.to_be_bytes();
     output[6..].copy_from_slice(&floe_iv_length);
 
     output
+}
+
+/// Check the user-provided encrypted segment size has left enough space for the segment header
+/// an encrypted segment requires.
+///
+/// # Panics
+///
+/// The size of an encrypted segment is limited by the fact that the length of the final
+/// segment needs to put into the segment header. The length of the final segment is converted
+/// into a `u32` and encoded into 4 bytes as a big-endian value.
+///
+/// This limits the size of the plaintext segment into `u32::MAX - segment_overhead()`.
+///
+/// The function will panic if the segment size (S) is bigger than this limit. Realistically, nobody
+/// will pick [`u32::MAX`] bytes for the segment size. This would be a 4GiB segment size.
+pub(crate) fn check_segment_size<A, const S: u32>()
+where
+    A: AeadCore,
+{
+    #[allow(clippy::panic)]
+    if S > u32::MAX - (segment_overhead::<A>() as u32) {
+        panic!("Segment size is too large, the length of the segment doesn't fit into a u32");
+    } else if TryInto::<usize>::try_into(S).is_err() {
+        panic!("Segment size is too large, the length of the segment doesn't fit into a usize");
+    } else if S < ((segment_overhead::<A>() + 1) as u32) {
+        panic!(
+            "Segment size is too small, the segment doesn't have enough space for the segment header"
+        );
+    }
 }
 
 pub(crate) fn floe_kdf<A, H, const N: usize, const S: u32>(
@@ -87,8 +134,11 @@ where
 
     // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
     // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.
+    #[allow(clippy::expect_used)]
     <H as KeyInit>::new_from_slice(key)
-        .unwrap()
+        .expect(
+            "the KDF input key material should be big enough as this is determined by AEAD_KEY_LEN",
+        )
         .chain_update(params)
         .chain_update(floe_iv.as_bytes())
         .chain_update(purpose)

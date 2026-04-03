@@ -15,15 +15,15 @@
 
 use core::ops::Sub;
 
-use aead::{AeadInOut, Key, KeyInit, KeySizeUser, Result, array::ArraySize, consts::U32};
+use aead::{AeadInOut, Key, KeyInit, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
 use subtle::ConstantTimeEq;
 
 use crate::{
-    FloeKdf,
+    DecryptionError, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{floe_iv::FloeIv, header::Header, segment::Segment},
-    utils::{encoded_parameters, segment_overhead},
+    types::{AEAD_MAX_SEGMENTS, floe_iv::FloeIv, header::Header, segment::Segment},
+    utils::{check_segment_size, plaintext_size},
 };
 
 pub struct FloeDecryptor<'a, A, H, const N: usize, const S: u32>
@@ -47,18 +47,21 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
-    pub fn new(key: &Key<A>, associated_data: &'a [u8], header: &Header<N>) -> Result<Self> {
+    pub fn new(
+        key: &Key<A>,
+        associated_data: &'a [u8],
+        header: &Header<H, N, S>,
+    ) -> Result<Self, DecryptionError> {
+        check_segment_size::<A, S>();
+
         let floe_key = FloeKey::new(key);
 
-        let expected_parameters = encoded_parameters::<H, N, S>();
-        let expected_tag = floe_key.derive_header_tag::<N, S>(&header.floe_iv, associated_data);
         // TODO: Should we use Mac::verify() here?
+        let expected_tag = floe_key.derive_header_tag::<N, S>(&header.floe_iv, associated_data);
         let is_header_tag_valid: bool = expected_tag.ct_eq(&header.tag).into();
 
         if !is_header_tag_valid {
-            todo!("Header tag is not valid")
-        } else if header.parameter_info != expected_parameters {
-            todo!("The parameters don't match")
+            Err(DecryptionError::InvalidHeaderTag)
         } else {
             let message_key = floe_key.derive_message_key::<N, S>(&header.floe_iv, associated_data);
             let floe_iv = header.floe_iv;
@@ -71,9 +74,10 @@ where
         }
     }
 
-    pub const fn plaintext_size() -> usize {
-        // TODO: unsafe cast
-        S as usize - segment_overhead::<A>()
+    pub fn plaintext_size(&self) -> usize {
+        // SAFETY: The constructor of the FloeDecryptor checks that the segment size fits into an
+        // usize and that it's bigger than the overhead.
+        plaintext_size::<A, S>()
     }
 
     pub fn decrypt_segment(
@@ -82,24 +86,47 @@ where
         buffer: &mut [u8],
         segment_number: u64,
         is_final: bool,
-    ) -> Result<()> {
+    ) -> Result<(), DecryptionError> {
         if is_final != segment.is_final() {
-            todo!(
-                "Error if the segment header tells us that the segment is final but the caller tells us otherwise"
-            )
-        } else if segment.ciphertext.len() != buffer.len() {
-            todo!("Error invalid buffer length")
-        } else {
-            let epoch_key = self.message_key.derive_epoch_key::<N, S>(
-                &self.floe_iv,
-                &self.associated_data,
-                segment_number,
-                is_final,
-            );
-
-            epoch_key.decrypt_segment(segment, buffer)?;
-
-            Ok(())
+            return Err(DecryptionError::MalformedSegment);
         }
+
+        let ciphertext_length = segment.ciphertext.len();
+        let buffer_length = buffer.len();
+        let allowed_ciphertext_length = self.plaintext_size();
+
+        if is_final {
+            if segment.ciphertext.len() > allowed_ciphertext_length {
+                return Err(DecryptionError::MalformedSegment);
+            }
+
+            if segment_number > AEAD_MAX_SEGMENTS {
+                return Err(DecryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            }
+        } else {
+            if segment.ciphertext.len() != allowed_ciphertext_length {
+                return Err(DecryptionError::MalformedSegment);
+            }
+
+            if segment_number > (AEAD_MAX_SEGMENTS - 1) {
+                return Err(DecryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            }
+        }
+
+        if ciphertext_length != buffer_length {
+            return Err(DecryptionError::InvalidBuffer {
+                got: buffer_length,
+                expected: ciphertext_length,
+            });
+        }
+
+        let epoch_key = self.message_key.derive_epoch_key::<N, S>(
+            &self.floe_iv,
+            self.associated_data,
+            segment_number,
+            is_final,
+        );
+
+        epoch_key.decrypt_segment(segment, buffer)
     }
 }

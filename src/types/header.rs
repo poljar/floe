@@ -13,11 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::marker::PhantomData;
+
 use aead::{array::Array, consts::U32};
 use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
 
-use crate::{types::floe_iv::FloeIv, utils::PARAMETER_INFO_LENGTH};
+use crate::{
+    FloeKdf,
+    result::HeaderDecodeError,
+    types::floe_iv::FloeIv,
+    utils::{PARAMETER_INFO_LENGTH, encoded_parameters},
+};
 
 pub(crate) type HeaderTagSize = U32;
 
@@ -34,12 +41,14 @@ impl HeaderTag {
     }
 
     pub(crate) fn as_bytes_mut(&mut self) -> &mut [u8; HeaderTagSize::USIZE] {
+        #[allow(clippy::expect_used)]
         self.inner
             .as_mut_array()
             .expect("We should be able to convert the Array to an primitive array")
     }
 
     pub fn as_bytes(&self) -> &[u8; HeaderTagSize::USIZE] {
+        #[allow(clippy::expect_used)]
         self.inner
             .as_array()
             .expect("We should be able to convert the Array to an primitive array")
@@ -53,16 +62,25 @@ impl ConstantTimeEq for HeaderTag {
 }
 
 #[derive(Debug)]
-pub struct Header<const N: usize> {
+pub struct Header<H: FloeKdf, const N: usize, const S: u32> {
     pub(crate) parameter_info: [u8; PARAMETER_INFO_LENGTH],
     pub(crate) floe_iv: FloeIv<N>,
     pub(crate) tag: HeaderTag,
+    pub(crate) phantom_data: PhantomData<H>,
 }
 
-impl<const N: usize> Header<N> {
+impl<H: FloeKdf, const N: usize, const S: u32> Header<H, N, S> {
     #[allow(clippy::result_unit_err)]
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
-        // TODO: check if we have the correct length
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
+        let expected_length = Self::length();
+        let slice_length = bytes.len();
+
+        if slice_length != expected_length {
+            return Err(HeaderDecodeError::InvalidLength {
+                expected: expected_length,
+                got: slice_length,
+            });
+        }
 
         let mut parameter_info = [0u8; PARAMETER_INFO_LENGTH];
         parameter_info.copy_from_slice(&bytes[..PARAMETER_INFO_LENGTH]);
@@ -77,11 +95,18 @@ impl<const N: usize> Header<N> {
         tag.as_bytes_mut()
             .copy_from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
 
-        Ok(Self {
-            parameter_info,
-            floe_iv,
-            tag,
-        })
+        let expected_parameters = encoded_parameters::<H, N, S>();
+
+        if expected_parameters != parameter_info {
+            Err(HeaderDecodeError::InvalidParameters)
+        } else {
+            Ok(Self {
+                parameter_info,
+                floe_iv,
+                tag,
+                phantom_data: PhantomData,
+            })
+        }
     }
 
     // TODO: This should go behind an alloc feature flag.
@@ -90,7 +115,12 @@ impl<const N: usize> Header<N> {
         // TODO: We could return an array here, but as with the FloeIv type, we would need the
         // `generic_const_exprs` feature.
         // let output = [0u8; Self::length()];
-        todo!()
+        [
+            self.parameter_info.as_slice(),
+            self.floe_iv.as_bytes().as_slice(),
+            self.tag.as_bytes().as_slice(),
+        ]
+        .concat()
     }
 
     pub fn parameters(&self) -> &[u8; PARAMETER_INFO_LENGTH] {
@@ -106,6 +136,6 @@ impl<const N: usize> Header<N> {
     }
 
     pub const fn length() -> usize {
-        PARAMETER_INFO_LENGTH + HeaderTagSize::USIZE + N
+        PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
     }
 }

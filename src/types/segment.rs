@@ -15,10 +15,10 @@
 
 use core::ops::Range;
 
-use aead::{AeadInOut, Nonce, Result, Tag};
+use aead::{AeadInOut, Nonce, Tag};
 use digest::typenum::Unsigned;
 
-use crate::utils::segment_overhead;
+use crate::{EncryptionError, result::SegmentDecodeError, utils::segment_overhead};
 
 /// The length of the segment header.
 ///
@@ -74,29 +74,58 @@ impl<'a, A> Segment<'a, A>
 where
     A: AeadInOut,
 {
-    pub fn from_bytes(message: &'a [u8]) -> Result<Self> {
-        // TODO: Check the message length here.
+    pub fn from_bytes(segment: &'a [u8]) -> Result<Self, SegmentDecodeError> {
+        let segment_length = segment.len();
+        let expected_length = segment_overhead::<A>() + 1;
 
-        let header_slice = &message[HEADER_RANGE];
-        let nonce = &message[nonce_range::<A>()];
-        let tag = &message[tag_range::<A>(message.len())];
+        if segment_length < expected_length {
+            return Err(SegmentDecodeError::InvalidSliceLength {
+                expected: expected_length,
+                got: segment_length,
+            });
+        }
 
-        let ciphertext = &message
-            [SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message.len() - A::TagSize::USIZE];
+        let header_slice = &segment[HEADER_RANGE];
+        let nonce = &segment[nonce_range::<A>()];
+        let tag = &segment[tag_range::<A>(segment_length)];
+        let ciphertext = &segment[ciphertext_range::<A>(segment_length)];
 
-        let nonce = nonce.try_into().unwrap();
-        let tag = tag.try_into().unwrap();
+        #[allow(clippy::expect_used)]
+        let header: &[u8; SEGMENT_HEADER_LENGTH] = header_slice.try_into().expect(
+            "should be able to interpret the header slice as an \
+                array, the range has the correct size",
+        );
 
-        let header: &[u8; SEGMENT_HEADER_LENGTH] = header_slice.try_into().unwrap();
+        #[allow(clippy::expect_used)]
+        let nonce = nonce.try_into().expect(
+            "should be able to interpret the nonce \
+                slice as an array since the range has the correct size",
+        );
 
-        let segment = Self {
+        #[allow(clippy::expect_used)]
+        let tag = tag.try_into().expect(
+            "should be able to interpret the tag slice as \
+                an array since the range has the correct size",
+        );
+
+        let is_final = header != &NON_FINAL_SEGMENT_HEADER;
+
+        if is_final {
+            let length: usize = u32::from_be_bytes(*header)
+                .try_into()
+                .map_err(|_| SegmentDecodeError::MalformedSegment)?;
+
+            if length != segment.len() {
+                return Err(SegmentDecodeError::MalformedSegment);
+            }
+        }
+
+        Ok(Self {
             header,
             nonce,
             ciphertext,
             tag,
-        };
-
-        Ok(segment)
+        })
     }
 
     pub fn is_final(&self) -> bool {
@@ -122,12 +151,25 @@ impl<'a, A> SegmentMut<'a, A>
 where
     A: AeadInOut,
 {
-    pub(crate) fn from_buffer(buffer: &'a mut [u8]) -> Result<Self> {
-        // If the buffer can't fit at least the overhead and a single ciphertext byte, then return
-        // an error.
-        if buffer.len() < segment_overhead::<A>() + 1 {
-            todo!("Too small buffer error")
+    pub(crate) const fn output_size(plaintext: &[u8]) -> usize {
+        plaintext.len() + segment_overhead::<A>()
+    }
+
+    pub(crate) fn from_buffer_and_plaintext(
+        plaintext: &[u8],
+        buffer: &'a mut [u8],
+    ) -> Result<Self, EncryptionError> {
+        let expected_buffer_size = Self::output_size(plaintext);
+        let buffer_length = buffer.len();
+
+        if buffer_length != expected_buffer_size {
+            // If our plaintext doesn't fit into the output buffer, return an error.
+            Err(EncryptionError::InvalidBuffer {
+                expected: expected_buffer_size,
+                got: buffer_length,
+            })
         } else {
+            #[allow(clippy::expect_used)]
             let [header, nonce, ciphertext, tag] = buffer
                 .get_disjoint_mut([
                     HEADER_RANGE,
@@ -135,13 +177,35 @@ where
                     ciphertext_range::<A>(buffer.len()),
                     tag_range::<A>(buffer.len()),
                 ])
-                .unwrap();
+                .expect(
+                    "the buffer length was already checked and the ranges are disjoint, \
+                    we should be able to get disjoint mut slices of the output buffer",
+                );
+
+            #[allow(clippy::expect_used)]
+            let header = header
+                .try_into()
+                .expect("the disjoint header slice should have the correct length");
+
+            #[allow(clippy::expect_used)]
+            let nonce = nonce
+                .try_into()
+                .expect("the disjoint nonce slice should have the correct length");
+
+            #[allow(clippy::expect_used)]
+            let tag = tag
+                .try_into()
+                .expect("the disjoint tag slice should have the correct length");
+
+            // Now copy the plaintext into the ciphertext part of the output buffer, the AEAD will
+            // later replace the plaintext bytes in-place with the ciphertext bytes.
+            ciphertext.copy_from_slice(plaintext);
 
             Ok(Self {
-                header: header.try_into().unwrap(),
-                nonce: nonce.try_into().unwrap(),
+                header,
+                nonce,
                 ciphertext,
-                tag: tag.try_into().unwrap(),
+                tag,
             })
         }
     }

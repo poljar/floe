@@ -30,8 +30,10 @@ type FloeDecryptorAesGcm = FloeDecryptor<'static, Aes256Gcm, HmacSha384, 32, 64>
 
 /// Helper to read and decode a test vector.
 fn read_hex_file(file_name: &str) -> Vec<u8> {
+    #[allow(clippy::expect_used)]
     let data = std::fs::read_to_string(file_name).expect("should be able to read the test vector");
 
+    #[allow(clippy::expect_used)]
     hex::decode(data.trim()).expect("should be able to decode the test vector")
 }
 
@@ -80,7 +82,7 @@ fn test_vectors() {
     let plaintext = read_hex_file("test-vectors/rust_GCM256_IV256_64_pt.txt");
     let ciphertext = read_hex_file("test-vectors/rust_GCM256_IV256_64_ct.txt");
 
-    let header_length = Header::<32>::length();
+    let header_length = Header::<HmacSha384, 32, 64>::length();
     let header_bytes = &ciphertext[..header_length];
     let header = Header::from_bytes(header_bytes).expect("should be able to decode the header");
 
@@ -89,7 +91,7 @@ fn test_vectors() {
     let decryptor = FloeDecryptorAesGcm::new(&key, AAD, &header).unwrap();
 
     let mut decrypted: Vec<u8> = vec![];
-    let mut plaintext_segment = vec![0u8; FloeDecryptorAesGcm::plaintext_size()];
+    let mut plaintext_segment = vec![0u8; decryptor.plaintext_size()];
     let segments = ciphertext[header_length..].chunks(64);
     let num_segments = segments.len();
 

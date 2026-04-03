@@ -16,6 +16,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod keys;
+mod result;
 mod types;
 mod utils;
 
@@ -24,7 +25,10 @@ pub mod random_access;
 use aead::array::ArraySize;
 use digest::{KeyInit, Mac};
 
-pub use types::{header::Header, segment::Segment};
+pub use crate::{
+    result::{DecryptionError, EncryptionError},
+    types::{header::Header, segment::Segment},
+};
 
 pub trait FloeKdf: Mac + KeyInit {
     /// The length of the KDF key.
@@ -52,12 +56,13 @@ impl FloeKdf for hmac::Hmac<sha2::Sha384> {
 
 // TODO: Add a similar trait for the AEAD as we need to encode the AEAD_ID, AEAD_ROTATION_MASK,
 // AEAD_MAX_SEGMENTS .
-// TODO: Should we put the FLOE_IV_LEN into the trait as well?
+
+// TODO: Put the FLOE_IV_LEN into the trait as well.
 
 // TODO: Add the higher level public streaming/online functions
 // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
-//
-// TODO: Additionally add methods where the user doesn't need to allocate buffers.
+
+// TODO: Add methods where the user doesn't need to allocate buffers manually.
 
 #[cfg(all(test, feature = "std", feature = "floe-gcm"))]
 mod tests;

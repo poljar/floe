@@ -14,15 +14,16 @@
 // limitations under the License.
 
 use core::ops::Sub;
+use std::marker::PhantomData;
 
-use aead::{AeadInOut, Key, KeyInit, KeySizeUser, Result, array::ArraySize, consts::U32};
+use aead::{AeadInOut, Key, KeyInit, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
 
 use crate::{
-    FloeKdf, Header,
+    EncryptionError, FloeKdf, Header,
     keys::{FloeKey, MessageKey},
-    types::{floe_iv::FloeIv, segment::SegmentMut},
-    utils::{encoded_parameters, segment_overhead},
+    types::{AEAD_MAX_SEGMENTS, floe_iv::FloeIv, segment::SegmentMut},
+    utils::{check_segment_size, encoded_parameters, plaintext_size},
 };
 
 /// Exposes the FLOE random-access encryption APIs.
@@ -35,7 +36,7 @@ where
     H: FloeKdf,
 {
     /// The header of the Floe session.
-    header: Header<N>,
+    header: Header<H, N, S>,
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
     /// The message key, used to derive the AEAD key for the segments.
@@ -54,6 +55,8 @@ where
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
+        check_segment_size::<A, S>();
+
         let floe_key = FloeKey::new(key);
         let floe_iv = FloeIv::generate();
 
@@ -64,6 +67,7 @@ where
             parameter_info: encoded_parameters::<H, N, S>(),
             floe_iv,
             tag: header_tag,
+            phantom_data: PhantomData,
         };
 
         Self {
@@ -73,15 +77,26 @@ where
         }
     }
 
-    pub const fn output_size(&self, plaintext: &[u8]) -> usize {
-        segment_overhead::<A>() + plaintext.len()
+    pub fn input_size(&self) -> usize {
+        // SAFETY: The constructor of the FloeEncryptor checks that the segment size fits into an
+        // usize and that it's bigger than the overhead.
+        plaintext_size::<A, S>()
+    }
+
+    pub fn output_size(&self, plaintext: &[u8]) -> usize {
+        assert!(
+            plaintext.len() <= self.input_size(),
+            "The plaintext size can't be bigger than the input size"
+        );
+
+        SegmentMut::<A>::output_size(plaintext)
     }
 
     /// Get the header of this Floe encryption session.
     ///
     /// The header is usually prepended to the first encrypted segment. It will be needed to start
     /// decrypting segments.
-    pub fn header(&self) -> &Header<N> {
+    pub fn header(&self) -> &Header<H, N, S> {
         &self.header
     }
 
@@ -91,38 +106,47 @@ where
         buffer: &mut [u8],
         segment_number: u64,
         is_final: bool,
-    ) -> Result<()> {
-        // TODO: This cast might truncate bits if S::Max > usize::Max.
-        let allowed_plaintext_length = S as usize - segment_overhead::<A>();
+    ) -> Result<(), EncryptionError> {
+        let allowed_plaintext_length = self.input_size();
+        let plaintext_length = plaintext.len();
 
         if is_final {
-            if plaintext.len() > allowed_plaintext_length {
-                todo!("The final segment is larger")
+            if plaintext_length > allowed_plaintext_length {
+                return Err(EncryptionError::InvalidPlaintextLength {
+                    expected: allowed_plaintext_length,
+                    got: plaintext_length,
+                });
+            }
+
+            if segment_number >= AEAD_MAX_SEGMENTS {
+                return Err(EncryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
             }
         } else {
-            if plaintext.len() != allowed_plaintext_length {
-                todo!("The plaintext has an incorrect length");
+            if plaintext_length != allowed_plaintext_length {
+                return Err(EncryptionError::InvalidPlaintextLength {
+                    expected: allowed_plaintext_length,
+                    got: plaintext_length,
+                });
+            }
+
+            if segment_number >= (AEAD_MAX_SEGMENTS - 1) {
+                return Err(EncryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
             }
         }
 
-        // TODO: Check if we reached the max number of allowed segments.
+        // Parse the output buffer as a SegmentMut, this copies the plaintext into the output
+        // buffer as well.
+        let segment = SegmentMut::from_buffer_and_plaintext(plaintext, buffer)?;
 
-        let segment = SegmentMut::from_buffer(buffer).unwrap();
+        // Now we derive an epoch key for this segment.
+        let epoch_key = self.message_key.derive_epoch_key::<N, S>(
+            &self.header.floe_iv,
+            self.associated_data,
+            segment_number,
+            is_final,
+        );
 
-        // If our plaintext doesn't fit into the output buffer, return an error.
-        if segment.ciphertext.len() != plaintext.len() {
-            todo!("The output buffer is too small")
-        } else {
-            // Now we derive an epoch key for this segment.
-            let epoch_key = self.message_key.derive_epoch_key::<N, S>(
-                &self.header.floe_iv,
-                &self.associated_data,
-                segment_number,
-                is_final,
-            );
-
-            // And finally we encrypt the segment.
-            epoch_key.encrypt_segment(segment, plaintext)
-        }
+        // And finally we encrypt the segment.
+        epoch_key.encrypt_segment(segment)
     }
 }
