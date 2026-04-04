@@ -13,11 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::{AeadCore, Key, KeySizeUser};
+use aead::{AeadCore, Key};
 use digest::{KeyInit, typenum::Unsigned};
 
 use crate::{
-    FloeKdf,
+    FloeAead, FloeKdf,
     types::{floe_iv::FloeIv, segment::SEGMENT_HEADER_LENGTH},
 };
 
@@ -65,16 +65,17 @@ where
 /// fit into a `u32`.
 ///
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
-pub(crate) fn encoded_parameters<H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
+pub(crate) fn encoded_parameters<A, H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
 where
+    A: FloeAead,
     H: FloeKdf,
 {
     let mut output = [0u8; PARAMETER_INFO_LENGTH];
 
     // AEAD_ID
-    output[0] = 0x00;
+    output[0] = A::AEAD_ID;
     // KDF_IF
-    output[1] = <H as FloeKdf>::KDF_ID;
+    output[1] = H::KDF_ID;
 
     // The segment length, encoded as a big-endian value.
     let segment_length = S.to_be_bytes();
@@ -131,10 +132,10 @@ pub(crate) fn floe_kdf<A, H, const N: usize, const S: u32>(
     purpose: &[u8],
 ) -> digest::CtOutput<H>
 where
-    A: AeadCore + KeySizeUser,
+    A: FloeAead,
     H: FloeKdf,
 {
-    let params = encoded_parameters::<H, N, S>();
+    let params = encoded_parameters::<A, H, N, S>();
 
     // TODO: This should probably use the Hkdf crate to make it more clear that this
     // should be a KDF, not a MAC. Shouldn't matter for correctness as we're

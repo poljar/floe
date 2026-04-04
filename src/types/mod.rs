@@ -16,6 +16,3 @@
 pub(crate) mod floe_iv;
 pub(crate) mod header;
 pub(crate) mod segment;
-
-// TODO: Move this into the FloeAead trait once we add it.
-pub(crate) const AEAD_MAX_SEGMENTS: u64 = 1 << 40;

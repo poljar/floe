@@ -19,7 +19,7 @@ use hmac::Hmac;
 use sha2::Sha384;
 
 use crate::{
-    Header, Segment,
+    Segment,
     random_access::{FloeDecryptor, FloeEncryptor},
 };
 
@@ -27,6 +27,7 @@ type HmacSha384 = Hmac<Sha384>;
 
 type FloeEncryptorAesGcm = FloeEncryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
 type FloeDecryptorAesGcm = FloeDecryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
+type Header = crate::Header<Aes256Gcm, HmacSha384, 32, 64>;
 
 /// Helper to read and decode a test vector.
 fn read_hex_file(file_name: &str) -> Vec<u8> {
@@ -80,7 +81,7 @@ fn test_vectors() {
     let plaintext = read_hex_file("test-vectors/rust_GCM256_IV256_64_pt.txt");
     let ciphertext = read_hex_file("test-vectors/rust_GCM256_IV256_64_ct.txt");
 
-    let header_length = Header::<HmacSha384, 32, 64>::length();
+    let header_length = Header::length();
     let header_bytes = &ciphertext[..header_length];
     let header = Header::from_bytes(header_bytes).expect("should be able to decode the header");
 

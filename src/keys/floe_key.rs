@@ -16,15 +16,15 @@
 use core::{marker::PhantomData, ops::Sub};
 
 use aead::{
-    AeadInOut, Key,
+    Key,
     array::{Array, ArraySize},
     consts::U32,
 };
-use digest::{KeyInit, OutputSizeUser};
+use digest::OutputSizeUser;
 
 use super::message_key::MessageKey;
 use crate::{
-    FloeKdf,
+    FloeAead, FloeKdf,
     types::{floe_iv::FloeIv, header::HeaderTag},
     utils::floe_kdf,
 };
@@ -36,7 +36,7 @@ use crate::{
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#key-generation
 pub(crate) struct FloeKey<'a, A, H>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     key: &'a Key<A>,
@@ -46,7 +46,7 @@ where
 
 impl<'a, A, H> FloeKey<'a, A, H>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     /// Create a new [`FloeKey`] from an array of bytes.

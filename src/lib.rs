@@ -22,7 +22,7 @@ mod utils;
 
 pub mod random_access;
 
-use aead::array::ArraySize;
+use aead::{AeadInOut, array::ArraySize};
 use digest::{KeyInit, Mac};
 
 pub use crate::{
@@ -46,6 +46,12 @@ pub trait FloeKdf: Mac + KeyInit {
     const KDF_ID: u8;
 }
 
+pub trait FloeAead: AeadInOut + KeyInit {
+    const AEAD_ID: u8;
+    const AEAD_ROTATION_MASK: u64;
+    const AEAD_MAX_SEGMENTS: u64;
+}
+
 #[cfg(feature = "floe-gcm")]
 impl FloeKdf for hmac::Hmac<sha2::Sha384> {
     // As per the Floe spec defined in the derived parameters part:
@@ -54,15 +60,21 @@ impl FloeKdf for hmac::Hmac<sha2::Sha384> {
     const KDF_ID: u8 = 0;
 }
 
-// TODO: Add a similar trait for the AEAD as we need to encode the AEAD_ID,
-// AEAD_ROTATION_MASK, AEAD_MAX_SEGMENTS .
+#[cfg(feature = "floe-gcm")]
+impl FloeAead for aes_gcm::Aes256Gcm {
+    // As per the Floe spec defined in the derived parameters part:
+    // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
+    const AEAD_ID: u8 = 0;
+    const AEAD_ROTATION_MASK: u64 = !((1u64 << 20) - 1);
+    const AEAD_MAX_SEGMENTS: u64 = 1 << 40;
+}
 
+#[cfg(feature = "floe-gcm")]
 // TODO: Put the FLOE_IV_LEN into the trait as well.
 
 // TODO: Add the higher level public streaming/online functions
 // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
 
 // TODO: Add methods where the user doesn't need to allocate buffers manually.
-
 #[cfg(all(test, feature = "std", feature = "floe-gcm"))]
 mod tests;

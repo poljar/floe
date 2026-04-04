@@ -15,20 +15,20 @@
 
 use core::ops::Sub;
 
-use aead::{AeadInOut, Key, KeyInit, KeySizeUser, array::ArraySize, consts::U32};
+use aead::{Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
 use subtle::ConstantTimeEq;
 
 use crate::{
-    DecryptionError, FloeKdf,
+    DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{AEAD_MAX_SEGMENTS, floe_iv::FloeIv, header::Header, segment::Segment},
+    types::{floe_iv::FloeIv, header::Header, segment::Segment},
     utils::{check_segment_size, plaintext_size},
 };
 
 pub struct FloeDecryptor<'a, A, H, const N: usize, const S: u32>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     message_key: MessageKey<A, H>,
@@ -38,7 +38,7 @@ where
 
 impl<'a, A, H, const N: usize, const S: u32> FloeDecryptor<'a, A, H, N, S>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
     <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
@@ -50,7 +50,7 @@ where
     pub fn new(
         key: &Key<A>,
         associated_data: &'a [u8],
-        header: &Header<H, N, S>,
+        header: &Header<A, H, N, S>,
     ) -> Result<Self, DecryptionError> {
         check_segment_size::<A, S>();
 
@@ -96,16 +96,16 @@ where
                 return Err(DecryptionError::MalformedSegment);
             }
 
-            if segment_number > AEAD_MAX_SEGMENTS {
-                return Err(DecryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            if segment_number > A::AEAD_MAX_SEGMENTS {
+                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
             }
         } else {
             if segment.ciphertext.len() != allowed_ciphertext_length {
                 return Err(DecryptionError::MalformedSegment);
             }
 
-            if segment_number > (AEAD_MAX_SEGMENTS - 1) {
-                return Err(DecryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            if segment_number > (A::AEAD_MAX_SEGMENTS - 1) {
+                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
             }
         }
 

@@ -20,7 +20,7 @@ use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
 
 use crate::{
-    FloeKdf,
+    FloeAead, FloeKdf,
     result::HeaderDecodeError,
     types::floe_iv::FloeIv,
     utils::{PARAMETER_INFO_LENGTH, encoded_parameters},
@@ -58,14 +58,23 @@ impl ConstantTimeEq for HeaderTag {
 }
 
 #[derive(Debug)]
-pub struct Header<H: FloeKdf, const N: usize, const S: u32> {
+pub struct Header<A, H, const N: usize, const S: u32>
+where
+    A: FloeAead,
+    H: FloeKdf,
+{
     pub(crate) parameter_info: [u8; PARAMETER_INFO_LENGTH],
     pub(crate) floe_iv: FloeIv<N>,
     pub(crate) tag: HeaderTag,
-    pub(crate) phantom_data: PhantomData<H>,
+    pub(crate) aead: PhantomData<A>,
+    pub(crate) kdf: PhantomData<H>,
 }
 
-impl<H: FloeKdf, const N: usize, const S: u32> Header<H, N, S> {
+impl<A, H, const N: usize, const S: u32> Header<A, H, N, S>
+where
+    A: FloeAead,
+    H: FloeKdf,
+{
     #[allow(clippy::result_unit_err)]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
         let expected_length = Self::length();
@@ -90,12 +99,12 @@ impl<H: FloeKdf, const N: usize, const S: u32> Header<H, N, S> {
 
         tag.as_bytes_mut().copy_from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
 
-        let expected_parameters = encoded_parameters::<H, N, S>();
+        let expected_parameters = encoded_parameters::<A, H, N, S>();
 
         if expected_parameters != parameter_info {
             Err(HeaderDecodeError::InvalidParameters)
         } else {
-            Ok(Self { parameter_info, floe_iv, tag, phantom_data: PhantomData })
+            Ok(Self { parameter_info, floe_iv, tag, aead: PhantomData, kdf: PhantomData })
         }
     }
 

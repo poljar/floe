@@ -16,13 +16,15 @@
 use core::{marker::PhantomData, ops::Sub};
 
 use aead::{
-    AeadInOut, KeySizeUser,
+    KeySizeUser,
     array::{Array, ArraySize},
 };
 use digest::{KeyInit, OutputSizeUser};
 
 use super::epoch_key::EpochKey;
-use crate::{FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_parameters};
+use crate::{
+    FloeAead, FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_parameters,
+};
 
 /// The [`MessageKey`] of a Floe session.
 ///
@@ -36,7 +38,7 @@ use crate::{FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_pa
 // TODO: Derive zeroize under a feature flag.
 pub(crate) struct MessageKey<A, H>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     pub(super) key: FloeKdfKey<H>,
@@ -46,7 +48,7 @@ where
 
 impl<A, H> MessageKey<A, H>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     /// Create an [`EpochKey`] for the given segment.
@@ -69,12 +71,9 @@ where
         <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
         <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
     {
-        // TODO: Make the rotation mask configurable.
-        const ROTATION_MASK: u64 = !((1u64 << 20) - 1);
-
         // The rotation mask decides how many segments will be encrypted using the same
         // epoch key.
-        let masked_counter = segment_number & ROTATION_MASK;
+        let masked_counter = segment_number & A::AEAD_ROTATION_MASK;
 
         // The purpose will include the segment number, this binds the key to this
         // specific segment.
@@ -91,7 +90,7 @@ where
                 "the KDF input key material should be big enough as this is determined \
                  by KDF_KEY_LEN parameter",
             )
-            .chain_update(encoded_parameters::<H, N, S>())
+            .chain_update(encoded_parameters::<A, H, N, S>())
             .chain_update(floe_iv.as_bytes())
             .chain_update(purpose)
             .chain_update(associated_data)

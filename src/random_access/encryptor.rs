@@ -16,13 +16,13 @@
 use core::ops::Sub;
 use std::marker::PhantomData;
 
-use aead::{AeadInOut, Key, KeyInit, KeySizeUser, array::ArraySize, consts::U32};
+use aead::{Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
 
 use crate::{
-    EncryptionError, FloeKdf, Header,
+    EncryptionError, FloeAead, FloeKdf, Header,
     keys::{FloeKey, MessageKey},
-    types::{AEAD_MAX_SEGMENTS, floe_iv::FloeIv, segment::SegmentMut},
+    types::{floe_iv::FloeIv, segment::SegmentMut},
     utils::{check_segment_size, encoded_parameters, plaintext_size},
 };
 
@@ -33,11 +33,11 @@ use crate::{
 /// times.
 pub struct FloeEncryptor<'a, A, H, const N: usize, const S: u32>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
 {
     /// The header of the Floe session.
-    header: Header<H, N, S>,
+    header: Header<A, H, N, S>,
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
     /// The message key, used to derive the AEAD key for the segments.
@@ -46,7 +46,7 @@ where
 
 impl<'a, A, H, const N: usize, const S: u32> FloeEncryptor<'a, A, H, N, S>
 where
-    A: AeadInOut + KeyInit,
+    A: FloeAead,
     H: FloeKdf,
     <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
@@ -65,10 +65,11 @@ where
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
         let header = Header {
-            parameter_info: encoded_parameters::<H, N, S>(),
+            parameter_info: encoded_parameters::<A, H, N, S>(),
             floe_iv,
             tag: header_tag,
-            phantom_data: PhantomData,
+            aead: PhantomData,
+            kdf: PhantomData,
         };
 
         Self { message_key, header, associated_data }
@@ -93,7 +94,7 @@ where
     ///
     /// The header is usually prepended to the first encrypted segment. It will
     /// be needed to start decrypting segments.
-    pub fn header(&self) -> &Header<H, N, S> {
+    pub fn header(&self) -> &Header<A, H, N, S> {
         &self.header
     }
 
@@ -115,8 +116,8 @@ where
                 });
             }
 
-            if segment_number >= AEAD_MAX_SEGMENTS {
-                return Err(EncryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            if segment_number >= A::AEAD_MAX_SEGMENTS {
+                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
             }
         } else {
             if plaintext_length != allowed_plaintext_length {
@@ -126,8 +127,8 @@ where
                 });
             }
 
-            if segment_number >= (AEAD_MAX_SEGMENTS - 1) {
-                return Err(EncryptionError::MaxSegmentsReached(AEAD_MAX_SEGMENTS));
+            if segment_number >= (A::AEAD_MAX_SEGMENTS - 1) {
+                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
             }
         }
 
