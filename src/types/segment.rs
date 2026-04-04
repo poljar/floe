@@ -61,7 +61,6 @@ const fn ciphertext_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message_length - A::TagSize::USIZE
 }
 
-// TODO: Should the segment know about the expected segment size?
 pub struct Segment<'a, A>
 where
     A: AeadInOut,

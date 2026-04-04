@@ -20,6 +20,8 @@ mod result;
 mod types;
 mod utils;
 
+#[cfg(feature = "floe-gcm")]
+pub mod gcm;
 pub mod random_access;
 
 use aead::{AeadInOut, array::ArraySize};
@@ -47,30 +49,17 @@ pub trait FloeKdf: Mac + KeyInit {
 }
 
 pub trait FloeAead: AeadInOut + KeyInit {
+    /// The unique numeric identifier of this AEAD implementation.
+    ///
+    /// Will be used in the [Floe header] as part of the parameters.
+    ///
+    /// [Floe header]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#floe-ciphertext-layout
     const AEAD_ID: u8;
+
     const AEAD_ROTATION_MASK: u64;
+
     const AEAD_MAX_SEGMENTS: u64;
 }
-
-#[cfg(feature = "floe-gcm")]
-impl FloeKdf for hmac::Hmac<sha2::Sha384> {
-    // As per the Floe spec defined in the derived parameters part:
-    // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
-    type KeySize = aead::consts::U48;
-    const KDF_ID: u8 = 0;
-}
-
-#[cfg(feature = "floe-gcm")]
-impl FloeAead for aes_gcm::Aes256Gcm {
-    // As per the Floe spec defined in the derived parameters part:
-    // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
-    const AEAD_ID: u8 = 0;
-    const AEAD_ROTATION_MASK: u64 = !((1u64 << 20) - 1);
-    const AEAD_MAX_SEGMENTS: u64 = 1 << 40;
-}
-
-#[cfg(feature = "floe-gcm")]
-// TODO: Put the FLOE_IV_LEN into the trait as well.
 
 // TODO: Add the higher level public streaming/online functions
 // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function

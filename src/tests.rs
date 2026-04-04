@@ -13,21 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::Key;
-use aes_gcm::Aes256Gcm;
-use hmac::Hmac;
-use sha2::Sha384;
-
 use crate::{
     Segment,
-    random_access::{FloeDecryptor, FloeEncryptor},
+    gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header},
 };
-
-type HmacSha384 = Hmac<Sha384>;
-
-type FloeEncryptorAesGcm = FloeEncryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
-type FloeDecryptorAesGcm = FloeDecryptor<'static, Aes256Gcm, HmacSha384, 32, 64>;
-type Header = crate::Header<Aes256Gcm, HmacSha384, 32, 64>;
 
 /// Helper to read and decode a test vector.
 fn read_hex_file(file_name: &str) -> Vec<u8> {
@@ -40,8 +29,8 @@ fn read_hex_file(file_name: &str) -> Vec<u8> {
 
 #[test]
 fn test_aes_gcm() {
-    let key = Key::<Aes256Gcm>::try_from([0u8; 32].as_slice()).unwrap();
-    let encryptor = FloeEncryptorAesGcm::new(&key, &[]);
+    let key = FloeKey::try_from([0u8; 32]).unwrap();
+    let encryptor = FloeEncryptor::<64>::new(&key, &[]);
 
     let plaintext = b"Hello world";
     let output_size = encryptor.output_size(plaintext);
@@ -51,14 +40,10 @@ fn test_aes_gcm() {
         .encrypt_segment(plaintext, &mut buffer, 0, true)
         .expect("We should be able to encrypt the segment");
 
-    let header = encryptor.header();
-
-    let decryptor = FloeDecryptorAesGcm::new(&key, &[], header).unwrap();
-
+    let decryptor = FloeDecryptor::<64>::new(&key, &[], encryptor.header()).unwrap();
     let mut decryption_buffer = vec![0u8; 11];
 
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
-
     decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
 
     assert_eq!(
@@ -70,33 +55,33 @@ fn test_aes_gcm() {
 
 #[test]
 fn test_invalid_key_length() {
-    let key = Key::<HmacSha384>::try_from([0u8; 33].as_slice());
+    let key = FloeKey::try_from([0u8; 33].as_slice());
     key.expect_err("We should not be able to create a floe KDF key with an invalid size");
 }
 
 #[test]
 fn test_vectors() {
     const AAD: &[u8] = b"This is AAD";
+    const SEGMENT_SIZE: u32 = 64;
 
     let plaintext = read_hex_file("test-vectors/rust_GCM256_IV256_64_pt.txt");
     let ciphertext = read_hex_file("test-vectors/rust_GCM256_IV256_64_ct.txt");
 
-    let header_length = Header::length();
+    let header_length = Header::<SEGMENT_SIZE>::length();
     let header_bytes = &ciphertext[..header_length];
-    let header = Header::from_bytes(header_bytes).expect("should be able to decode the header");
+    let header = Header::<SEGMENT_SIZE>::from_bytes(header_bytes)
+        .expect("should be able to decode the header");
 
-    let key = Key::<Aes256Gcm>::try_from([0u8; 32].as_slice())
-        .expect("should be able to create a zero key");
-    let decryptor = FloeDecryptorAesGcm::new(&key, AAD, &header).unwrap();
+    let key = FloeKey::try_from([0u8; 32].as_slice()).expect("should be able to create a zero key");
+    let decryptor = FloeDecryptor::new(&key, AAD, &header).unwrap();
 
     let mut decrypted: Vec<u8> = vec![];
     let mut plaintext_segment = vec![0u8; decryptor.plaintext_size()];
-    let segments = ciphertext[header_length..].chunks(64);
+    let segments = ciphertext[header_length..].chunks(SEGMENT_SIZE as usize);
     let num_segments = segments.len();
 
     for (segment_number, segment) in segments.enumerate() {
         let is_final = segment_number == num_segments - 1;
-
         let segment = Segment::from_bytes(segment).expect("We should be able to parse the segment");
 
         assert_eq!(is_final, segment.is_final());
