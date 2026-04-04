@@ -1,0 +1,29 @@
+# https://embarkstudios.github.io/cargo-deny/checks/cfg.html
+[graph]
+all-features = true
+exclude = []
+
+[advisories]
+version = 2
+ignore = []
+
+[licenses]
+version = 2
+allow = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "MIT",
+]
+exceptions = [
+    { allow = ["Unicode-3.0"], crate = "unicode-ident" },
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+
+allow-git = []
