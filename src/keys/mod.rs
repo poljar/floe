@@ -18,11 +18,10 @@ mod floe_key;
 mod message_key;
 
 use aead::array::Array;
-
-use crate::FloeKdf;
-
 pub(crate) use floe_key::FloeKey;
 pub(crate) use message_key::MessageKey;
+
+use crate::FloeKdf;
 
 /// The underlying byte [`Array`] for a [`MessageKey`].
 pub(crate) type FloeKdfKey<K> = Array<u8, <K as FloeKdf>::KeySize>;

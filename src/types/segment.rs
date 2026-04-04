@@ -22,39 +22,41 @@ use crate::{EncryptionError, result::SegmentDecodeError, utils::segment_overhead
 
 /// The length of the segment header.
 ///
-/// The segment header contains the length of a segment if the segment is the final segment or a
-/// placeholder in case the segment is non-final, namely [`NON_FINAL_SEGMENT_HEADER`].
+/// The segment header contains the length of a segment if the segment is the
+/// final segment or a placeholder in case the segment is non-final, namely
+/// [`NON_FINAL_SEGMENT_HEADER`].
 ///
-/// Since this is 4 bytes long, this limits the encrypted segment size to [u32::MAX]. This means
-/// that the ciphertext and consequently the plaintext segment need to smaller than u32::MAX
-/// because the encrypted segment needs to fit the header, nonce, and tag into the allocated buffer.
+/// Since this is 4 bytes long, this limits the encrypted segment size to
+/// [u32::MAX]. This means that the ciphertext and consequently the plaintext
+/// segment need to smaller than u32::MAX because the encrypted segment needs to
+/// fit the header, nonce, and tag into the allocated buffer.
 pub(crate) const SEGMENT_HEADER_LENGTH: usize = 4;
 
 /// The segment header for any non-final encrypted segment.
 pub(crate) const NON_FINAL_SEGMENT_HEADER: [u8; SEGMENT_HEADER_LENGTH] =
     [0xFFu8; SEGMENT_HEADER_LENGTH];
 
-/// Given a byte slice, this range determines where we should expect the header of the
-/// encrypted segment.
+/// Given a byte slice, this range determines where we should expect the header
+/// of the encrypted segment.
 const HEADER_RANGE: Range<usize> = 0..SEGMENT_HEADER_LENGTH;
 
-/// Given a byte slice, this range determines where we should expect the nonce of the
-/// encrypted segment.
+/// Given a byte slice, this range determines where we should expect the nonce
+/// of the encrypted segment.
 const fn nonce_range<A: AeadInOut>() -> Range<usize> {
     SEGMENT_HEADER_LENGTH..SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE
 }
 
-/// Given a byte slice, this range determines where we should expect the AEAD tag of the encrypted
-/// segment.
+/// Given a byte slice, this range determines where we should expect the AEAD
+/// tag of the encrypted segment.
 ///
-/// Since we're using a postfix tag, meaning the AEAD tag is appended at the end of the encrypted
-/// segment, the range depends on the length of the message.
+/// Since we're using a postfix tag, meaning the AEAD tag is appended at the end
+/// of the encrypted segment, the range depends on the length of the message.
 const fn tag_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     message_length - A::TagSize::USIZE..message_length
 }
 
-/// Given a byte slice, this range determines where we should expect the ciphertext of the
-/// encrypted segment.
+/// Given a byte slice, this range determines where we should expect the
+/// ciphertext of the encrypted segment.
 const fn ciphertext_range<A: AeadInOut>(message_length: usize) -> Range<usize> {
     SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE..message_length - A::TagSize::USIZE
 }
@@ -120,12 +122,7 @@ where
             }
         }
 
-        Ok(Self {
-            header,
-            nonce,
-            ciphertext,
-            tag,
-        })
+        Ok(Self { header, nonce, ciphertext, tag })
     }
 
     pub fn is_final(&self) -> bool {
@@ -188,25 +185,19 @@ where
                 .expect("the disjoint header slice should have the correct length");
 
             #[allow(clippy::expect_used)]
-            let nonce = nonce
-                .try_into()
-                .expect("the disjoint nonce slice should have the correct length");
+            let nonce =
+                nonce.try_into().expect("the disjoint nonce slice should have the correct length");
 
             #[allow(clippy::expect_used)]
-            let tag = tag
-                .try_into()
-                .expect("the disjoint tag slice should have the correct length");
+            let tag =
+                tag.try_into().expect("the disjoint tag slice should have the correct length");
 
-            // Now copy the plaintext into the ciphertext part of the output buffer, the AEAD will
-            // later replace the plaintext bytes in-place with the ciphertext bytes.
+            // Now copy the plaintext into the ciphertext part of the output buffer, the
+            // AEAD will later replace the plaintext bytes in-place with the
+            // ciphertext bytes.
             ciphertext.copy_from_slice(plaintext);
 
-            Ok(Self {
-                header,
-                nonce,
-                ciphertext,
-                tag,
-            })
+            Ok(Self { header, nonce, ciphertext, tag })
         }
     }
 }

@@ -66,17 +66,13 @@ where
             let message_key = floe_key.derive_message_key::<N, S>(&header.floe_iv, associated_data);
             let floe_iv = header.floe_iv;
 
-            Ok(Self {
-                message_key,
-                floe_iv,
-                associated_data,
-            })
+            Ok(Self { message_key, floe_iv, associated_data })
         }
     }
 
     pub fn plaintext_size(&self) -> usize {
-        // SAFETY: The constructor of the FloeDecryptor checks that the segment size fits into an
-        // usize and that it's bigger than the overhead.
+        // SAFETY: The constructor of the FloeDecryptor checks that the segment size
+        // fits into an usize and that it's bigger than the overhead.
         plaintext_size::<A, S>()
     }
 

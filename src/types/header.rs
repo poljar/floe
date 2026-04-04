@@ -35,9 +35,7 @@ pub struct HeaderTag {
 
 impl HeaderTag {
     pub(crate) fn new() -> Self {
-        Self {
-            inner: Array::from([0u8; HeaderTagSize::USIZE]),
-        }
+        Self { inner: Array::from([0u8; HeaderTagSize::USIZE]) }
     }
 
     pub(crate) fn as_bytes_mut(&mut self) -> &mut [u8; HeaderTagSize::USIZE] {
@@ -49,9 +47,7 @@ impl HeaderTag {
 
     pub fn as_bytes(&self) -> &[u8; HeaderTagSize::USIZE] {
         #[allow(clippy::expect_used)]
-        self.inner
-            .as_array()
-            .expect("We should be able to convert the Array to an primitive array")
+        self.inner.as_array().expect("We should be able to convert the Array to an primitive array")
     }
 }
 
@@ -92,28 +88,22 @@ impl<H: FloeKdf, const N: usize, const S: u32> Header<H, N, S> {
 
         let mut tag = HeaderTag::new();
 
-        tag.as_bytes_mut()
-            .copy_from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
+        tag.as_bytes_mut().copy_from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
 
         let expected_parameters = encoded_parameters::<H, N, S>();
 
         if expected_parameters != parameter_info {
             Err(HeaderDecodeError::InvalidParameters)
         } else {
-            Ok(Self {
-                parameter_info,
-                floe_iv,
-                tag,
-                phantom_data: PhantomData,
-            })
+            Ok(Self { parameter_info, floe_iv, tag, phantom_data: PhantomData })
         }
     }
 
     // TODO: This should go behind an alloc feature flag.
     #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Vec<u8> {
-        // TODO: We could return an array here, but as with the FloeIv type, we would need the
-        // `generic_const_exprs` feature.
+        // TODO: We could return an array here, but as with the FloeIv type, we would
+        // need the `generic_const_exprs` feature.
         // let output = [0u8; Self::length()];
         [
             self.parameter_info.as_slice(),

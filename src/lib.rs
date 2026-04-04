@@ -54,8 +54,8 @@ impl FloeKdf for hmac::Hmac<sha2::Sha384> {
     const KDF_ID: u8 = 0;
 }
 
-// TODO: Add a similar trait for the AEAD as we need to encode the AEAD_ID, AEAD_ROTATION_MASK,
-// AEAD_MAX_SEGMENTS .
+// TODO: Add a similar trait for the AEAD as we need to encode the AEAD_ID,
+// AEAD_ROTATION_MASK, AEAD_MAX_SEGMENTS .
 
 // TODO: Put the FLOE_IV_LEN into the trait as well.
 

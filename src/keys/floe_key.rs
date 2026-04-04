@@ -23,7 +23,6 @@ use aead::{
 use digest::{KeyInit, OutputSizeUser};
 
 use super::message_key::MessageKey;
-
 use crate::{
     FloeKdf,
     types::{floe_iv::FloeIv, header::HeaderTag},
@@ -52,15 +51,11 @@ where
 {
     /// Create a new [`FloeKey`] from an array of bytes.
     pub(crate) fn new(key: &'a Key<A>) -> Self {
-        Self {
-            key,
-            _phantom_aead: PhantomData,
-            _phantom: PhantomData,
-        }
+        Self { key, _phantom_aead: PhantomData, _phantom: PhantomData }
     }
 
-    /// Derive the header tag using this [`FloeKey`] as the input key material of the `FLOE_KDF`
-    /// operation.
+    /// Derive the header tag using this [`FloeKey`] as the input key material
+    /// of the `FLOE_KDF` operation.
     ///
     /// From the [spec]:
     ///
@@ -86,8 +81,8 @@ where
         HeaderTag { inner }
     }
 
-    /// Derive the [`MessageKey`] using this [`FloeKey`] as the input key material of the `FLOE_KDF`
-    /// operation.
+    /// Derive the [`MessageKey`] using this [`FloeKey`] as the input key
+    /// material of the `FLOE_KDF` operation.
     ///
     /// From the [spec]:
     ///
@@ -110,10 +105,6 @@ where
         let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
         let (key, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
 
-        MessageKey {
-            key,
-            _phantom_aead: PhantomData,
-            _phantom: PhantomData,
-        }
+        MessageKey { key, _phantom_aead: PhantomData, _phantom: PhantomData }
     }
 }

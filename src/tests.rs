@@ -58,9 +58,7 @@ fn test_aes_gcm() {
 
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
 
-    decryptor
-        .decrypt_segment(&segment, &mut decryption_buffer, 0, true)
-        .unwrap();
+    decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
 
     assert_eq!(
         plaintext.as_slice(),
@@ -111,8 +109,5 @@ fn test_vectors() {
         decrypted.extend_from_slice(buffer);
     }
 
-    assert_eq!(
-        plaintext, decrypted,
-        "The decrypted plaintext should match the original"
-    );
+    assert_eq!(plaintext, decrypted, "The decrypted plaintext should match the original");
 }

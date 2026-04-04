@@ -26,10 +26,12 @@ use crate::{
 /// Is always 10 bytes long.
 pub(crate) const PARAMETER_INFO_LENGTH: usize = 10;
 
-/// Calculate how many bytes an encrypted segment would contain in addition to the ciphertext.
+/// Calculate how many bytes an encrypted segment would contain in addition to
+/// the ciphertext.
 ///
-/// This value depends on the chosen AEAD as a segment will contain a nonce and a AEAD tag. For
-/// more info about an segment, take a look at the [`crate::types::segment::Segment`] struct.
+/// This value depends on the chosen AEAD as a segment will contain a nonce and
+/// a AEAD tag. For more info about an segment, take a look at the
+/// [`crate::types::segment::Segment`] struct.
 pub(crate) const fn segment_overhead<A>() -> usize
 where
     A: AeadCore,
@@ -37,8 +39,9 @@ where
     let nonce_size = <A as AeadCore>::NonceSize::USIZE;
     let tag_size = <A as AeadCore>::TagSize::USIZE;
 
-    // SAFETY: These additions are fine and can't overflow because no AEAD will have a nonce and
-    // tag size that wouldn't fit into a `usize`, even if the `usize` is `u16`.
+    // SAFETY: These additions are fine and can't overflow because no AEAD will have
+    // a nonce and tag size that wouldn't fit into a `usize`, even if the
+    // `usize` is `u16`.
     nonce_size + tag_size + SEGMENT_HEADER_LENGTH
 }
 
@@ -58,7 +61,8 @@ where
 ///
 /// # Panics
 ///
-/// This function will panic if the Floe IV length (N) is too large, it needs to fit into a `u32`.
+/// This function will panic if the Floe IV length (N) is too large, it needs to
+/// fit into a `u32`.
 ///
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
 pub(crate) fn encoded_parameters<H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
@@ -76,8 +80,9 @@ where
     let segment_length = S.to_be_bytes();
     output[2..6].copy_from_slice(&segment_length);
 
-    // The floe IV length, needs to converted to an u32 as the Floe spec expects 4 bytes.
-    // See the TODO item in the floe_iv.rs file how we can avoid this panic in the future.
+    // The floe IV length, needs to converted to an u32 as the Floe spec expects 4
+    // bytes. See the TODO item in the floe_iv.rs file how we can avoid this
+    // panic in the future.
     #[allow(clippy::expect_used)]
     let floe_iv_length =
         u32::try_from(N).expect("the Floe IV is too long, it must be smaller than u32::MAX");
@@ -87,19 +92,22 @@ where
     output
 }
 
-/// Check the user-provided encrypted segment size has left enough space for the segment header
-/// an encrypted segment requires.
+/// Check the user-provided encrypted segment size has left enough space for the
+/// segment header an encrypted segment requires.
 ///
 /// # Panics
 ///
-/// The size of an encrypted segment is limited by the fact that the length of the final
-/// segment needs to put into the segment header. The length of the final segment is converted
-/// into a `u32` and encoded into 4 bytes as a big-endian value.
+/// The size of an encrypted segment is limited by the fact that the length of
+/// the final segment needs to put into the segment header. The length of the
+/// final segment is converted into a `u32` and encoded into 4 bytes as a
+/// big-endian value.
 ///
-/// This limits the size of the plaintext segment into `u32::MAX - segment_overhead()`.
+/// This limits the size of the plaintext segment into `u32::MAX -
+/// segment_overhead()`.
 ///
-/// The function will panic if the segment size (S) is bigger than this limit. Realistically, nobody
-/// will pick [`u32::MAX`] bytes for the segment size. This would be a 4GiB segment size.
+/// The function will panic if the segment size (S) is bigger than this limit.
+/// Realistically, nobody will pick [`u32::MAX`] bytes for the segment size.
+/// This would be a 4GiB segment size.
 pub(crate) fn check_segment_size<A, const S: u32>()
 where
     A: AeadCore,
@@ -128,12 +136,14 @@ where
 {
     let params = encoded_parameters::<H, N, S>();
 
-    // TODO: This should probably use the Hkdf crate to make it more clear that this should be a
-    // KDF, not a MAC. Shouldn't matter for correctness as we're partially reimplementing HKDF and
-    // not asking for too much output, but would make this more obvious.
+    // TODO: This should probably use the Hkdf crate to make it more clear that this
+    // should be a KDF, not a MAC. Shouldn't matter for correctness as we're
+    // partially reimplementing HKDF and not asking for too much output, but
+    // would make this more obvious.
 
-    // TODO: This is a move of an Array so likely a memcpy under the hood. `finalize_into()` might
-    // be the thing we want, or if we switch to the Hkdf crate, that'll have the right API shape.
+    // TODO: This is a move of an Array so likely a memcpy under the hood.
+    // `finalize_into()` might be the thing we want, or if we switch to the Hkdf
+    // crate, that'll have the right API shape.
     #[allow(clippy::expect_used)]
     <H as KeyInit>::new_from_slice(key)
         .expect(

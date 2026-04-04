@@ -24,17 +24,18 @@ use crate::{
 
 /// The length of the AEAD additional associated data.
 ///
-/// Defined as the 64 bit segment number encoded as a big endian value (8 bytes) and a `is_final`
-/// flag (1 byte).
+/// Defined as the 64 bit segment number encoded as a big endian value (8 bytes)
+/// and a `is_final` flag (1 byte).
 const ASSOCIATED_DATA_LENGTH: usize = 9;
 
 /// The key to encrypt or decrypt a segment.
 ///
-/// The epoch key is derived on a per-segment basis from the [`crate::keys::MessageKey`].
-/// This key is used as the input-key material for the AEAD, as such its length depends on the
-/// picked AEAD.
+/// The epoch key is derived on a per-segment basis from the
+/// [`crate::keys::MessageKey`]. This key is used as the input-key material for
+/// the AEAD, as such its length depends on the picked AEAD.
 ///
-/// The `AEAD_ROTATION_MASK` determines how many segments will use the same [`EpochKey`].
+/// The `AEAD_ROTATION_MASK` determines how many segments will use the same
+/// [`EpochKey`].
 // TODO: Derive zeroize under a feature flag.
 pub(crate) struct EpochKey<A>
 where
@@ -52,32 +53,34 @@ where
 impl<A: AeadInOut + KeyInit> EpochKey<A> {
     /// Encrypt a single segment using this [`EpochKey`].
     ///
-    /// The segment needs to be prepared before this method is called. Namely the
-    /// [`SegmentMut::ciphertext`] field needs to contain the plaintext. This will be in-place
-    /// replaced with the ciphertext by the AEAD.
+    /// The segment needs to be prepared before this method is called. Namely
+    /// the [`SegmentMut::ciphertext`] field needs to contain the plaintext.
+    /// This will be in-place replaced with the ciphertext by the AEAD.
     ///
-    /// The [`SegmentMut::header`], [`SegmentMut::nonce`], and [`SegmentMut::tag`] on the other hand
-    /// will be filled out by this method.
+    /// The [`SegmentMut::header`], [`SegmentMut::nonce`], and
+    /// [`SegmentMut::tag`] on the other hand will be filled out by this
+    /// method.
     ///
-    /// This implements the second part of the `encryptSegment` function from the [spec].
+    /// This implements the second part of the `encryptSegment` function from
+    /// the [spec].
     ///
     /// # Panics
     ///
     /// Panics if the:
-    /// * addition of the length of the plaintext segment and length of the encrypted
-    ///   segment overhead overflows.
+    /// * addition of the length of the plaintext segment and length of the
+    ///   encrypted segment overhead overflows.
     /// * length of the encrypted segment can't fit into a `u32`
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn encrypt_segment(self, segment: SegmentMut<'_, A>) -> Result<(), EncryptionError> {
-        // Creating a SegmentMut has already copied the plaintext into the ciphertext field, let's
-        // just create a borrow of that field for our convenience.
+        // Creating a SegmentMut has already copied the plaintext into the ciphertext
+        // field, let's just create a borrow of that field for our convenience.
         let plaintext_buffer = segment.ciphertext;
 
         // Calculate the correct header, depending on if the segment is final or not.
         //
-        // If it's the final segment, we're putting the length of the segment into the header,
-        // otherwise a static placeholder header is used.
+        // If it's the final segment, we're putting the length of the segment into the
+        // header, otherwise a static placeholder header is used.
         let header = Self::build_segment_header(plaintext_buffer.len(), self.is_final);
 
         // Generate a new random AEAD nonce.
@@ -102,12 +105,13 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
 
     /// Decrypt a single segment using this [`EpochKey`].
     ///
-    /// This implements the second part of the `decryptSegment` function from the [spec].
+    /// This implements the second part of the `decryptSegment` function from
+    /// the [spec].
     ///
     /// # Panics
     ///
-    /// This function panics if the length of the buffer differs from the length of the
-    /// [`Segment::ciphertext`] field.
+    /// This function panics if the length of the buffer differs from the length
+    /// of the [`Segment::ciphertext`] field.
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
     pub(crate) fn decrypt_segment(
@@ -125,8 +129,8 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         let aead = A::new(&self.key);
         let associated_data = self.build_segment_associated_data();
 
-        // Copy the ciphertext into the output buffer, the AEAD will replace the ciphertext with
-        // the plaintext.
+        // Copy the ciphertext into the output buffer, the AEAD will replace the
+        // ciphertext with the plaintext.
         buffer.copy_from_slice(segment.ciphertext);
 
         // Finally, decrypt the ciphertext.
@@ -138,13 +142,15 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         )?)
     }
 
-    /// Create an array of associated data for the segment encryption/decryption.
+    /// Create an array of associated data for the segment
+    /// encryption/decryption.
     ///
-    /// This is not the same associated data the caller has given us. This associated data binds
-    /// the segment number and whether the segment is the final one to the ciphertext.
+    /// This is not the same associated data the caller has given us. This
+    /// associated data binds the segment number and whether the segment is
+    /// the final one to the ciphertext.
     ///
-    /// This implements a part of the `encryptSegment` and `decryptSegment` function from the
-    /// [spec], namely:
+    /// This implements a part of the `encryptSegment` and `decryptSegment`
+    /// function from the [spec], namely:
     ///
     /// ```text
     /// aead_aad = I2BE(position, 8) || aad_tail
@@ -157,7 +163,8 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
         // SAFETY: Casting a bool to an u8 [is fine]:
         //
         // > The bool represents a value, which could only
-        // > be either true or false. If you cast a bool into an integer, true will be 1 and false
+        // > be either true or false. If you cast a bool into an integer, true will be 1
+        // > and false
         // > will be 0.
         //
         // [is fine]: https://doc.rust-lang.org/std/primitive.bool.html
@@ -175,22 +182,21 @@ impl<A: AeadInOut + KeyInit> EpochKey<A> {
     ) -> [u8; SEGMENT_HEADER_LENGTH] {
         // Calculate the correct header, depending on if the segment is final or not.
         //
-        // If it's the final segment, we're putting the length of the segment into the header,
-        // otherwise a static placeholder header is used.
+        // If it's the final segment, we're putting the length of the segment into the
+        // header, otherwise a static placeholder header is used.
         if is_final {
-            // SAFETY: While this can overflow if the user has picked an invalid segment size that,
-            // the `FloeEncryptor` constructor checks if the user has picked a reasonable segment
-            // size.
+            // SAFETY: While this can overflow if the user has picked an invalid segment
+            // size that, the `FloeEncryptor` constructor checks if the user has
+            // picked a reasonable segment size.
             #[allow(clippy::expect_used)]
-            let final_segment_length = plaintext_buffer_length
-                .checked_add(segment_overhead::<A>())
-                .expect(
+            let final_segment_length =
+                plaintext_buffer_length.checked_add(segment_overhead::<A>()).expect(
                     "Adding the length of the encrypted segment overhead \
                     to the length of the final segment shouldn't overflow",
                 );
 
-            // The constructor panics also if we can't encode the final segment length into a
-            // `u32`.
+            // The constructor panics also if we can't encode the final segment length into
+            // a `u32`.
             #[allow(clippy::expect_used)]
             let final_segment_length: u32 = final_segment_length
                 .try_into()

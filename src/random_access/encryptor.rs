@@ -28,8 +28,9 @@ use crate::{
 
 /// Exposes the FLOE random-access encryption APIs.
 ///  
-/// The random-access APIs do not directly protect you against truncation attacks
-/// or prevent you from incorrectly encrypting the same segment multiple times.
+/// The random-access APIs do not directly protect you against truncation
+/// attacks or prevent you from incorrectly encrypting the same segment multiple
+/// times.
 pub struct FloeEncryptor<'a, A, H, const N: usize, const S: u32>
 where
     A: AeadInOut + KeyInit,
@@ -70,16 +71,12 @@ where
             phantom_data: PhantomData,
         };
 
-        Self {
-            message_key,
-            header,
-            associated_data,
-        }
+        Self { message_key, header, associated_data }
     }
 
     pub fn input_size(&self) -> usize {
-        // SAFETY: The constructor of the FloeEncryptor checks that the segment size fits into an
-        // usize and that it's bigger than the overhead.
+        // SAFETY: The constructor of the FloeEncryptor checks that the segment size
+        // fits into an usize and that it's bigger than the overhead.
         plaintext_size::<A, S>()
     }
 
@@ -94,8 +91,8 @@ where
 
     /// Get the header of this Floe encryption session.
     ///
-    /// The header is usually prepended to the first encrypted segment. It will be needed to start
-    /// decrypting segments.
+    /// The header is usually prepended to the first encrypted segment. It will
+    /// be needed to start decrypting segments.
     pub fn header(&self) -> &Header<H, N, S> {
         &self.header
     }
@@ -134,8 +131,8 @@ where
             }
         }
 
-        // Parse the output buffer as a SegmentMut, this copies the plaintext into the output
-        // buffer as well.
+        // Parse the output buffer as a SegmentMut, this copies the plaintext into the
+        // output buffer as well.
         let segment = SegmentMut::from_buffer_and_plaintext(plaintext, buffer)?;
 
         // Now we derive an epoch key for this segment.
