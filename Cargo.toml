@@ -29,6 +29,8 @@ todo = "deny"
 dbg_macro = "deny"
 unwrap_used = "deny"
 mem_forget = "deny"
+std_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
 
 [features]
 default = ["std", "floe-gcm", "zeroize"]

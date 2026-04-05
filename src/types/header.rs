@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use aead::{array::Array, consts::U32};
 use digest::typenum::Unsigned;
@@ -75,7 +75,6 @@ where
     A: FloeAead,
     H: FloeKdf,
 {
-    #[allow(clippy::result_unit_err)]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
         let expected_length = Self::length();
         let slice_length = bytes.len();

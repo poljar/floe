@@ -29,7 +29,7 @@ fn read_hex_file(file_name: &str) -> Vec<u8> {
 
 #[test]
 fn test_aes_gcm() {
-    let key = FloeKey::try_from([0u8; 32]).unwrap();
+    let key = FloeKey::from([0u8; 32]);
     let encryptor = FloeEncryptor::<64>::new(&key, &[]);
 
     let plaintext = b"Hello world";

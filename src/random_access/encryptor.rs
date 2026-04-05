@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::ops::Sub;
-use std::marker::PhantomData;
+use core::{marker::PhantomData, ops::Sub};
 
 use aead::{Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
