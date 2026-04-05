@@ -36,7 +36,7 @@ const ASSOCIATED_DATA_LENGTH: usize = 9;
 ///
 /// The `AEAD_ROTATION_MASK` determines how many segments will use the same
 /// [`EpochKey`].
-// TODO: Derive zeroize under a feature flag.
+#[cfg_attr(feature = "zeroize", derive(zeroize::ZeroizeOnDrop))]
 pub(crate) struct EpochKey<A>
 where
     A: AeadInOut,

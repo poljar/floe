@@ -20,6 +20,8 @@ use aead::{
     array::{Array, ArraySize},
 };
 use digest::{KeyInit, OutputSizeUser};
+#[cfg(feature = "zeroize")]
+use zeroize::Zeroize;
 
 use super::epoch_key::EpochKey;
 use crate::{
@@ -35,7 +37,7 @@ use crate::{
 /// The length of this key is determined by the picked KDF and defined in the
 /// `KDF_KEY_LEN` constant in the spec, or in the [`FloeKdf::KeySize`] type in
 /// this implementation.
-// TODO: Derive zeroize under a feature flag.
+#[cfg_attr(feature = "zeroize", derive(zeroize::ZeroizeOnDrop))]
 pub(crate) struct MessageKey<A, H>
 where
     A: FloeAead,
@@ -99,7 +101,10 @@ where
 
         // Split the output. The key will reuse the same memory the original output
         // used, avoiding any copying. We discard the rest of the output.
-        let (key, _) = Array::split::<<A as KeySizeUser>::KeySize>(output.into_bytes());
+        let (key, mut _rest) = Array::split::<<A as KeySizeUser>::KeySize>(output.into_bytes());
+
+        #[cfg(feature = "zeroize")]
+        _rest.zeroize();
 
         EpochKey { key, segment_number, is_final }
     }

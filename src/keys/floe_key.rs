@@ -21,6 +21,8 @@ use aead::{
     consts::U32,
 };
 use digest::OutputSizeUser;
+#[cfg(feature = "zeroize")]
+use zeroize::Zeroize;
 
 use super::message_key::MessageKey;
 use crate::{
@@ -76,7 +78,10 @@ where
         const PURPOSE: &[u8] = b"HEADER_TAG:";
 
         let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
-        let (inner, _) = Array::split::<U32>(output.into_bytes());
+        let (inner, mut _rest) = Array::split::<U32>(output.into_bytes());
+
+        #[cfg(feature = "zeroize")]
+        _rest.zeroize();
 
         HeaderTag { inner }
     }
@@ -103,7 +108,10 @@ where
         const PURPOSE: &[u8] = b"MESSAGE_KEY:";
 
         let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
-        let (key, _) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
+        let (key, mut _rest) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
+
+        #[cfg(feature = "zeroize")]
+        _rest.zeroize();
 
         MessageKey { key, _phantom_aead: PhantomData, _phantom: PhantomData }
     }
