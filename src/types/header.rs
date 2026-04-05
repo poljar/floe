@@ -18,6 +18,7 @@ use core::marker::PhantomData;
 use aead::{array::Array, consts::U32};
 use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 use crate::{
     FloeAead, FloeKdf,
@@ -28,22 +29,16 @@ use crate::{
 
 pub(crate) type HeaderTagSize = U32;
 
-#[derive(Debug)]
+#[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
+#[repr(transparent)]
 pub struct HeaderTag {
     pub(crate) inner: Array<u8, HeaderTagSize>,
 }
 
 impl HeaderTag {
-    pub(crate) fn from_slice(slice: &[u8]) -> Self {
-        let mut tag = Self { inner: Array::from([0u8; HeaderTagSize::USIZE]) };
-        tag.inner.as_mut_slice().copy_from_slice(slice);
-
-        tag
-    }
-
     pub fn as_bytes(&self) -> &[u8; HeaderTagSize::USIZE] {
         #[allow(clippy::expect_used)]
-        self.inner.as_array().expect("We should be able to convert the Array to an primitive array")
+        self.inner.as_array().expect("We should be able to convert the Array to a primitive array")
     }
 }
 
@@ -53,17 +48,28 @@ impl ConstantTimeEq for HeaderTag {
     }
 }
 
+#[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
+#[repr(C)]
+struct InnerHeader<A, H, const N: usize, const S: u32>
+where
+    A: FloeAead,
+    H: FloeKdf,
+{
+    parameter_info: [u8; PARAMETER_INFO_LENGTH],
+    floe_iv: FloeIv<N>,
+    tag: HeaderTag,
+    aead: PhantomData<A>,
+    kdf: PhantomData<H>,
+}
+
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Header<A, H, const N: usize, const S: u32>
 where
     A: FloeAead,
     H: FloeKdf,
 {
-    pub(crate) parameter_info: [u8; PARAMETER_INFO_LENGTH],
-    pub(crate) floe_iv: FloeIv<N>,
-    pub(crate) tag: HeaderTag,
-    pub(crate) aead: PhantomData<A>,
-    pub(crate) kdf: PhantomData<H>,
+    inner: InnerHeader<A, H, N, S>,
 }
 
 impl<A, H, const N: usize, const S: u32> Header<A, H, N, S>
@@ -71,60 +77,51 @@ where
     A: FloeAead,
     H: FloeKdf,
 {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
-        let expected_length = Self::length();
-        let slice_length = bytes.len();
+    pub const fn length() -> usize {
+        PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
+    }
 
-        if slice_length != expected_length {
-            return Err(HeaderDecodeError::InvalidLength {
-                expected: expected_length,
-                got: slice_length,
-            });
+    pub(crate) fn new(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
+        let parameter_info = encoded_parameters::<A, H, N, S>();
+
+        Self {
+            inner: InnerHeader {
+                parameter_info,
+                floe_iv,
+                tag: header_tag,
+                aead: PhantomData,
+                kdf: PhantomData,
+            },
         }
+    }
 
-        let mut parameter_info = [0u8; PARAMETER_INFO_LENGTH];
-        parameter_info.copy_from_slice(&bytes[..PARAMETER_INFO_LENGTH]);
-
-        let floe_iv =
-            FloeIv::<N>::from_slice(&bytes[PARAMETER_INFO_LENGTH..N + PARAMETER_INFO_LENGTH]);
-        let tag = HeaderTag::from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
+        let inner = InnerHeader::read_from_bytes(bytes).map_err(|_| {
+            HeaderDecodeError::InvalidLength { expected: Self::length(), got: bytes.len() }
+        })?;
 
         let expected_parameters = encoded_parameters::<A, H, N, S>();
 
-        if expected_parameters != parameter_info {
+        if expected_parameters != inner.parameter_info {
             Err(HeaderDecodeError::InvalidParameters)
         } else {
-            Ok(Self { parameter_info, floe_iv, tag, aead: PhantomData, kdf: PhantomData })
+            Ok(Self { inner })
         }
     }
 
-    // TODO: This should go behind an alloc feature flag.
-    #[cfg(feature = "std")]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        // TODO: We could return an array here, but as with the FloeIv type, we would
-        // need the `generic_const_exprs` feature.
-        // let output = [0u8; Self::length()];
-        [
-            self.parameter_info.as_slice(),
-            self.floe_iv.as_bytes().as_slice(),
-            self.tag.as_bytes().as_slice(),
-        ]
-        .concat()
+    pub fn as_bytes(&self) -> &[u8] {
+        self.inner.as_bytes()
     }
 
     pub fn parameters(&self) -> &[u8; PARAMETER_INFO_LENGTH] {
-        &self.parameter_info
+        &self.inner.parameter_info
     }
 
     pub fn iv(&self) -> &FloeIv<N> {
-        &self.floe_iv
+        &self.inner.floe_iv
     }
 
     pub fn tag(&self) -> &HeaderTag {
-        &self.tag
-    }
-
-    pub const fn length() -> usize {
-        PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
+        &self.inner.tag
     }
 }

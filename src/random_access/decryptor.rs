@@ -57,14 +57,14 @@ where
         let floe_key = FloeKey::new(key);
 
         // TODO: Should we use Mac::verify() here?
-        let expected_tag = floe_key.derive_header_tag::<N, S>(&header.floe_iv, associated_data);
-        let is_header_tag_valid: bool = expected_tag.ct_eq(&header.tag).into();
+        let expected_tag = floe_key.derive_header_tag::<N, S>(header.iv(), associated_data);
+        let is_header_tag_valid: bool = expected_tag.ct_eq(header.tag()).into();
 
         if !is_header_tag_valid {
             Err(DecryptionError::InvalidHeaderTag)
         } else {
-            let message_key = floe_key.derive_message_key::<N, S>(&header.floe_iv, associated_data);
-            let floe_iv = header.floe_iv;
+            let message_key = floe_key.derive_message_key::<N, S>(header.iv(), associated_data);
+            let floe_iv = *header.iv();
 
             Ok(Self { message_key, floe_iv, associated_data })
         }

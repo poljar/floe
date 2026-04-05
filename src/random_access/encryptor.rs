@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::{marker::PhantomData, ops::Sub};
+use core::ops::Sub;
 
 use aead::{Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
@@ -22,7 +22,7 @@ use crate::{
     EncryptionError, FloeAead, FloeKdf, Header,
     keys::{FloeKey, MessageKey},
     types::{floe_iv::FloeIv, segment::SegmentMut},
-    utils::{check_segment_size, encoded_parameters, plaintext_size},
+    utils::{check_segment_size, plaintext_size},
 };
 
 /// Exposes the FLOE random-access encryption APIs.
@@ -63,13 +63,7 @@ where
         let header_tag = floe_key.derive_header_tag::<N, S>(&floe_iv, associated_data);
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
-        let header = Header {
-            parameter_info: encoded_parameters::<A, H, N, S>(),
-            floe_iv,
-            tag: header_tag,
-            aead: PhantomData,
-            kdf: PhantomData,
-        };
+        let header = Header::new(floe_iv, header_tag);
 
         Self { message_key, header, associated_data }
     }
@@ -137,7 +131,7 @@ where
 
         // Now we derive an epoch key for this segment.
         let epoch_key = self.message_key.derive_epoch_key::<N, S>(
-            &self.header.floe_iv,
+            self.header.iv(),
             self.associated_data,
             segment_number,
             is_final,

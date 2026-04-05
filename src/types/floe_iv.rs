@@ -15,6 +15,7 @@
 
 use aead::rand_core::UnwrapErr;
 use rand::{Rng, rngs::SysRng};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 // TODO: We could use `const N: u16` for the generics here, this would be enough
 // for any IV someone would like to configure and would have `Into`
@@ -26,23 +27,13 @@ use rand::{Rng, rngs::SysRng};
 ///
 /// This initialization vector is randomly generated at the start of the
 /// encryption operation.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
+#[repr(transparent)]
 pub struct FloeIv<const N: usize> {
     inner: [u8; N],
 }
 
 impl<const N: usize> FloeIv<N> {
-    /// Create a new zero-initialized [`FloeIv`].
-    ///
-    /// This should only be used when we're parsing an existing [`FloeIv`] from
-    /// a bytestring.
-    pub(crate) fn from_slice(slice: &[u8]) -> Self {
-        let mut floe_iv = Self { inner: [0u8; N] };
-        floe_iv.inner.copy_from_slice(slice);
-
-        floe_iv
-    }
-
     /// Generate a new random [`FloeIv`].
     pub fn generate() -> Self {
         let mut rng = UnwrapErr(SysRng);
