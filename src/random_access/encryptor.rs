@@ -15,8 +15,9 @@
 
 use core::ops::Sub;
 
-use aead::{Key, KeySizeUser, array::ArraySize, consts::U32};
+use aead::{AeadCore, Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
+use zerocopy::{FromBytes, Immutable, IntoBytes, Unaligned};
 
 use crate::{
     EncryptionError, FloeAead, FloeKdf, Header,
@@ -47,6 +48,9 @@ impl<'a, A, H, const N: usize, const S: u32> FloeEncryptor<'a, A, H, N, S>
 where
     A: FloeAead,
     H: FloeKdf,
+    <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable + IntoBytes,
+    <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>:
+        FromBytes + Immutable + IntoBytes + Unaligned,
     <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
     <H as OutputSizeUser>::OutputSize: Sub<U32>,

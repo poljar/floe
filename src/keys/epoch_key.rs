@@ -13,8 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::{AeadInOut, Generate, Key, KeyInit, Nonce, rand_core::UnwrapErr};
+use aead::{
+    AeadCore, AeadInOut, Generate, Key, KeyInit, Nonce, array::ArraySize, rand_core::UnwrapErr,
+};
 use rand::rngs::SysRng;
+use zerocopy::{FromBytes, Immutable};
 
 use crate::{
     DecryptionError, EncryptionError,
@@ -39,8 +42,7 @@ const ASSOCIATED_DATA_LENGTH: usize = 9;
 #[cfg_attr(feature = "zeroize", derive(zeroize::ZeroizeOnDrop))]
 pub(crate) struct EpochKey<A>
 where
-    A: AeadInOut,
-    A: KeyInit,
+    A: AeadInOut + KeyInit,
 {
     /// The AEAD key used for encrypt or decrypt operations.
     pub(super) key: Key<A>,
@@ -50,7 +52,12 @@ where
     pub(super) is_final: bool,
 }
 
-impl<A: AeadInOut + KeyInit> EpochKey<A> {
+impl<A> EpochKey<A>
+where
+    A: AeadInOut + KeyInit,
+    <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
+    <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
+{
     /// Encrypt a single segment using this [`EpochKey`].
     ///
     /// The segment needs to be prepared before this method is called. Namely

@@ -27,6 +27,7 @@ use crate::{
     utils::{PARAMETER_INFO_LENGTH, encoded_parameters},
 };
 
+/// The size of the header tag.
 pub(crate) type HeaderTagSize = U32;
 
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
