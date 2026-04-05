@@ -34,15 +34,11 @@ pub struct HeaderTag {
 }
 
 impl HeaderTag {
-    pub(crate) fn new() -> Self {
-        Self { inner: Array::from([0u8; HeaderTagSize::USIZE]) }
-    }
+    pub(crate) fn from_slice(slice: &[u8]) -> Self {
+        let mut tag = Self { inner: Array::from([0u8; HeaderTagSize::USIZE]) };
+        tag.inner.as_mut_slice().copy_from_slice(slice);
 
-    pub(crate) fn as_bytes_mut(&mut self) -> &mut [u8; HeaderTagSize::USIZE] {
-        #[allow(clippy::expect_used)]
-        self.inner
-            .as_mut_array()
-            .expect("We should be able to convert the Array to an primitive array")
+        tag
     }
 
     pub fn as_bytes(&self) -> &[u8; HeaderTagSize::USIZE] {
@@ -89,14 +85,9 @@ where
         let mut parameter_info = [0u8; PARAMETER_INFO_LENGTH];
         parameter_info.copy_from_slice(&bytes[..PARAMETER_INFO_LENGTH]);
 
-        let mut floe_iv = FloeIv::<N>::new();
-        floe_iv
-            .as_bytes_mut()
-            .copy_from_slice(&bytes[PARAMETER_INFO_LENGTH..N + PARAMETER_INFO_LENGTH]);
-
-        let mut tag = HeaderTag::new();
-
-        tag.as_bytes_mut().copy_from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
+        let floe_iv =
+            FloeIv::<N>::from_slice(&bytes[PARAMETER_INFO_LENGTH..N + PARAMETER_INFO_LENGTH]);
+        let tag = HeaderTag::from_slice(&bytes[PARAMETER_INFO_LENGTH + N..]);
 
         let expected_parameters = encoded_parameters::<A, H, N, S>();
 
