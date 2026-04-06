@@ -14,29 +14,10 @@
 // limitations under the License.
 
 use aead::{AeadCore, Key};
-use digest::{KeyInit, typenum::Unsigned};
+use digest::KeyInit;
 use zerocopy::IntoBytes;
 
-use crate::{FloeAead, FloeIv, FloeKdf, Parameters, types::segment::SEGMENT_HEADER_LENGTH};
-
-/// Calculate how many bytes an encrypted segment would contain in addition to
-/// the ciphertext.
-///
-/// This value depends on the chosen AEAD as a segment will contain a nonce and
-/// a AEAD tag. For more info about an segment, take a look at the
-/// [`crate::types::segment::Segment`] struct.
-pub(crate) const fn segment_overhead<A>() -> usize
-where
-    A: AeadCore,
-{
-    let nonce_size = <A as AeadCore>::NonceSize::USIZE;
-    let tag_size = <A as AeadCore>::TagSize::USIZE;
-
-    // SAFETY: These additions are fine and can't overflow because no AEAD will have
-    // a nonce and tag size that wouldn't fit into a `usize`, even if the
-    // `usize` is `u16`.
-    nonce_size + tag_size + SEGMENT_HEADER_LENGTH
-}
+use crate::{FloeAead, FloeIv, FloeKdf, Parameters, Segment};
 
 pub(crate) fn plaintext_size<A, const S: u32>() -> usize
 where
@@ -44,7 +25,7 @@ where
 {
     #[allow(clippy::expect_used)]
     (TryInto::<usize>::try_into(S).expect("The encrypted segment size should fit into a u32"))
-        .checked_sub(segment_overhead::<A>())
+        .checked_sub(Segment::<'static, A>::overhead())
         .expect("The encrypted segment size should be bigger than the segment overhead")
 }
 
@@ -69,11 +50,11 @@ where
     A: AeadCore,
 {
     #[allow(clippy::panic)]
-    if S > u32::MAX - (segment_overhead::<A>() as u32) {
+    if S > u32::MAX - (Segment::<A>::overhead() as u32) {
         panic!("Segment size is too large, the length of the segment doesn't fit into a u32");
     } else if TryInto::<usize>::try_into(S).is_err() {
         panic!("Segment size is too large, the length of the segment doesn't fit into a usize");
-    } else if S < ((segment_overhead::<A>()) as u32) {
+    } else if S < ((Segment::<A>::overhead()) as u32) {
         panic!(
             "Segment size is too small, the segment doesn't have enough space for the segment header"
         );

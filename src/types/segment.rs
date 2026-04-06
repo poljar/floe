@@ -16,7 +16,7 @@
 use aead::{AeadCore, AeadInOut, Nonce, Tag, array::ArraySize};
 use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U32, Unaligned};
 
-use crate::{EncryptionError, result::SegmentDecodeError, utils::segment_overhead};
+use crate::{EncryptionError, result::SegmentDecodeError};
 
 /// The length of the segment header.
 ///
@@ -37,7 +37,7 @@ pub(crate) const NON_FINAL_SEGMENT_HEADER: u32 = u32::MAX;
 #[repr(C)]
 struct InnerSegment<A>
 where
-    A: AeadInOut,
+    A: AeadCore,
 {
     header: U32<BigEndian>,
     nonce: Nonce<A>,
@@ -46,7 +46,7 @@ where
 
 pub struct Segment<'a, A>
 where
-    A: AeadInOut,
+    A: AeadCore,
 {
     header: &'a U32<BigEndian>,
     nonce: &'a Nonce<A>,
@@ -56,13 +56,16 @@ where
 
 impl<'a, A> Segment<'a, A>
 where
-    A: AeadInOut + 'a,
-    <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
-    <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
+    A: AeadCore,
 {
-    pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, SegmentDecodeError> {
+    pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, SegmentDecodeError>
+    where
+        A: 'a,
+        <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
+        <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
+    {
         let invalid_length_err = || SegmentDecodeError::InvalidSliceLength {
-            expected: segment_overhead::<A>(),
+            expected: Segment::<A>::overhead(),
             got: bytes.len(),
         };
 
@@ -104,6 +107,12 @@ where
         *self.header != NON_FINAL_SEGMENT_HEADER
     }
 
+    /// Calculate how many more bytes an encrypted segment would contain in
+    /// addition to the ciphertext bytes itself.
+    pub const fn overhead() -> usize {
+        SEGMENT_HEADER_LENGTH + size_of::<Nonce<A>>() + size_of::<Tag<A>>()
+    }
+
     pub const fn plaintext_size(&self) -> usize {
         self.ciphertext.len()
     }
@@ -124,7 +133,7 @@ where
     A: AeadInOut + 'a,
 {
     pub(crate) const fn output_size(plaintext: &[u8]) -> usize {
-        plaintext.len() + segment_overhead::<A>()
+        plaintext.len() + Segment::<A>::overhead()
     }
 
     pub(crate) fn from_buffer_and_plaintext(

@@ -20,7 +20,6 @@ use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U64};
 use crate::{
     DecryptionError, EncryptionError,
     types::segment::{NON_FINAL_SEGMENT_HEADER, Segment, SegmentMut},
-    utils::segment_overhead,
 };
 
 /// The additional associated data for the AEAD.
@@ -192,7 +191,7 @@ where
             // picked a reasonable segment size.
             #[allow(clippy::expect_used)]
             let final_segment_length =
-                plaintext_buffer_length.checked_add(segment_overhead::<A>()).expect(
+                plaintext_buffer_length.checked_add(Segment::<A>::overhead()).expect(
                     "Adding the length of the encrypted segment overhead \
                     to the length of the final segment shouldn't overflow",
                 );
