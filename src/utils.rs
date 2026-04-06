@@ -142,9 +142,6 @@ where
     // partially reimplementing HKDF and not asking for too much output, but
     // would make this more obvious.
 
-    // TODO: This is a move of an Array so likely a memcpy under the hood.
-    // `finalize_into()` might be the thing we want, or if we switch to the Hkdf
-    // crate, that'll have the right API shape.
     #[allow(clippy::expect_used)]
     <H as KeyInit>::new_from_slice(key)
         .expect(
