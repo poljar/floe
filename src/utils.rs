@@ -83,17 +83,17 @@ where
     }
 }
 
-pub(crate) fn floe_kdf<A, H, const N: usize, const S: u32>(
+pub(crate) fn floe_kdf<A, K, const N: usize, const S: u32>(
     key: &Key<A>,
     floe_iv: &FloeIv<N>,
     associated_data: &[u8],
     purpose: &[u8],
-) -> digest::CtOutput<H>
+) -> digest::CtOutput<K>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
-    let params = Parameters::new::<A, H, N, S>();
+    let params = Parameters::new::<A, K, N, S>();
 
     // TODO: This should probably use the Hkdf crate to make it more clear that this
     // should be a KDF, not a MAC. Shouldn't matter for correctness as we're
@@ -101,7 +101,7 @@ where
     // would make this more obvious.
 
     #[allow(clippy::expect_used)]
-    <H as KeyInit>::new_from_slice(key)
+    <K as KeyInit>::new_from_slice(key)
         .expect(
             "the KDF input key material should be big enough as this is determined by AEAD_KEY_LEN",
         )

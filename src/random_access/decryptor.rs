@@ -31,37 +31,43 @@ use crate::{
     utils::{check_segment_size, plaintext_size},
 };
 
-pub struct FloeDecryptor<'a, A, H, const N: usize, const S: u32>
+pub struct FloeDecryptor<'a, A, K, const N: usize, const S: u32>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
-    message_key: MessageKey<A, H>,
+    /// The message key, used to derive the AEAD key for the segments.
+    message_key: MessageKey<A, K>,
+    /// The Floe initialization vector.
+    ///
+    /// This was created when the Floe session was created while the segments
+    /// were encrypted.
     floe_iv: FloeIv<N>,
+    /// The user-provided additional associated data.
     associated_data: &'a [u8],
 }
 
-impl<'a, A, H, const N: usize, const S: u32> FloeDecryptor<'a, A, H, N, S>
+impl<'a, A, K, const N: usize, const S: u32> FloeDecryptor<'a, A, K, N, S>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
     <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
     <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
-    <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-    <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
-    <H as OutputSizeUser>::OutputSize: Sub<U32>,
-    <<H as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
-    <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
-    <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
+    <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<U32>,
+    <<K as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
+    <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
 {
     pub fn new(
         key: &Key<A>,
         associated_data: &'a [u8],
-        header: &Header<A, H, N>,
+        header: &Header<A, K, N>,
     ) -> Result<Self, DecryptionError> {
         check_segment_size::<A, S>();
 
-        let expected_parameters = Parameters::new::<A, H, N, S>();
+        let expected_parameters = Parameters::new::<A, K, N, S>();
 
         if &expected_parameters != header.parameters() {
             return Err(DecryptionError::InvalidParameters {

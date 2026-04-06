@@ -36,32 +36,32 @@ use crate::{
 /// The random-access APIs do not directly protect you against truncation
 /// attacks or prevent you from incorrectly encrypting the same segment multiple
 /// times.
-pub struct FloeEncryptor<'a, A, H, const N: usize, const S: u32>
+pub struct FloeEncryptor<'a, A, K, const N: usize, const S: u32>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     /// The header of the Floe session.
-    header: Header<A, H, N>,
+    header: Header<A, K, N>,
+    /// The message key, used to derive the AEAD key for the segments.
+    message_key: MessageKey<A, K>,
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
-    /// The message key, used to derive the AEAD key for the segments.
-    message_key: MessageKey<A, H>,
 }
 
-impl<'a, A, H, const N: usize, const S: u32> FloeEncryptor<'a, A, H, N, S>
+impl<'a, A, K, const N: usize, const S: u32> FloeEncryptor<'a, A, K, N, S>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
     <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable + IntoBytes,
     <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>:
         FromBytes + Immutable + IntoBytes + Unaligned,
-    <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-    <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
-    <H as OutputSizeUser>::OutputSize: Sub<U32>,
-    <<H as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
-    <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
-    <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
+    <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<U32>,
+    <<K as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
+    <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
+    <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
 {
     #[cfg(feature = "getrandom")]
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
@@ -107,7 +107,7 @@ where
     ///
     /// The header is usually prepended to the first encrypted segment. It will
     /// be needed to start decrypting segments.
-    pub fn header(&self) -> &Header<A, H, N> {
+    pub fn header(&self) -> &Header<A, K, N> {
         &self.header
     }
 

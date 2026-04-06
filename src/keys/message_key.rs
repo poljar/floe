@@ -51,10 +51,10 @@ where
     pub(super) _phantom: PhantomData<H>,
 }
 
-impl<A, H> MessageKey<A, H>
+impl<A, K> MessageKey<A, K>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     /// Create an [`EpochKey`] for the given segment.
     ///
@@ -73,8 +73,8 @@ where
         is_final: bool,
     ) -> EpochKey<A>
     where
-        <H as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-        <<H as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
+        <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
+        <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
     {
         // The rotation mask decides how many segments will be encrypted using the same
         // epoch key.
@@ -86,13 +86,13 @@ where
         purpose[..4].copy_from_slice(b"DEK:");
         purpose[4..].copy_from_slice(&masked_counter.to_be_bytes());
 
-        let parameters = Parameters::new::<A, H, N, S>();
+        let parameters = Parameters::new::<A, K, N, S>();
 
         // We're not reusing the `crate::utils::floe_kdf` function here for type safety
         // reasons. We're using the `FloeKdfKey<H>` here, while the `floe_kdf`
         // function expects a `Key<A>`.
         #[allow(clippy::expect_used)]
-        let output = <H as KeyInit>::new_from_slice(&self.key)
+        let output = <K as KeyInit>::new_from_slice(&self.key)
             .expect(
                 "the KDF input key material should be big enough as this is determined \
                  by KDF_KEY_LEN parameter",

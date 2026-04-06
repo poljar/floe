@@ -36,20 +36,20 @@ use crate::{
 /// As per [spec], must be the same size as the AEAD key.
 ///
 /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#key-generation
-pub(crate) struct FloeKey<'a, A, H>
+pub(crate) struct FloeKey<'a, A, K>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     key: &'a Key<A>,
     _phantom_aead: PhantomData<A>,
-    _phantom: PhantomData<H>,
+    _phantom: PhantomData<K>,
 }
 
-impl<'a, A, H> FloeKey<'a, A, H>
+impl<'a, A, K> FloeKey<'a, A, K>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     /// Create a new [`FloeKey`] from an array of bytes.
     pub(crate) fn new(key: &'a Key<A>) -> Self {
@@ -72,12 +72,12 @@ where
         associated_data: &[u8],
     ) -> HeaderTag
     where
-        <H as OutputSizeUser>::OutputSize: Sub<U32>,
-        <<H as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
+        <K as OutputSizeUser>::OutputSize: Sub<U32>,
+        <<K as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
     {
         const PURPOSE: &[u8] = b"HEADER_TAG:";
 
-        let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
+        let output = floe_kdf::<A, K, N, S>(self.key, floe_iv, associated_data, PURPOSE);
         let (inner, mut _rest) = Array::split::<U32>(output.into_bytes());
 
         #[cfg(feature = "zeroize")]
@@ -100,15 +100,15 @@ where
         &self,
         floe_iv: &FloeIv<N>,
         associated_data: &[u8],
-    ) -> MessageKey<A, H>
+    ) -> MessageKey<A, K>
     where
-        <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
-        <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
+        <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
+        <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
     {
         const PURPOSE: &[u8] = b"MESSAGE_KEY:";
 
-        let output = floe_kdf::<A, H, N, S>(self.key, floe_iv, associated_data, PURPOSE);
-        let (key, mut _rest) = Array::split::<<H as FloeKdf>::KeySize>(output.into_bytes());
+        let output = floe_kdf::<A, K, N, S>(self.key, floe_iv, associated_data, PURPOSE);
+        let (key, mut _rest) = Array::split::<<K as FloeKdf>::KeySize>(output.into_bytes());
 
         #[cfg(feature = "zeroize")]
         _rest.zeroize();

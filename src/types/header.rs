@@ -95,39 +95,39 @@ impl ConstantTimeEq for HeaderTag {
 
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
 #[repr(C)]
-struct InnerHeader<A, H, const N: usize>
+struct InnerHeader<A, K, const N: usize>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     parameters: Parameters,
     floe_iv: FloeIv<N>,
     tag: HeaderTag,
     aead: PhantomData<A>,
-    kdf: PhantomData<H>,
+    kdf: PhantomData<K>,
 }
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Header<A, H, const N: usize>
+pub struct Header<A, K, const N: usize>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
-    inner: InnerHeader<A, H, N>,
+    inner: InnerHeader<A, K, N>,
 }
 
-impl<A, H, const N: usize> Header<A, H, N>
+impl<A, K, const N: usize> Header<A, K, N>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
     pub const fn length() -> usize {
         PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
     }
 
     pub(crate) fn new<const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
-        let parameters = Parameters::new::<A, H, N, S>();
+        let parameters = Parameters::new::<A, K, N, S>();
 
         Self {
             inner: InnerHeader {
