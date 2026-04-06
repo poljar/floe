@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use pastey::paste;
+
 use crate::{
     Segment,
     gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header},
@@ -59,35 +61,36 @@ fn test_invalid_key_length() {
     key.expect_err("We should not be able to create a floe KDF key with an invalid size");
 }
 
-#[test]
-fn test_vectors() {
+fn decrypt_test_vector<const S: u32>(ciphertext: &[u8], plaintext: &[u8]) {
     const AAD: &[u8] = b"This is AAD";
-    const SEGMENT_SIZE: u32 = 64;
 
-    let plaintext = read_hex_file("test-vectors/rust_GCM256_IV256_64_pt.txt");
-    let ciphertext = read_hex_file("test-vectors/rust_GCM256_IV256_64_ct.txt");
-
-    let header_length = Header::<SEGMENT_SIZE>::length();
+    let header_length = Header::<S>::length();
     let header_bytes = &ciphertext[..header_length];
-    let header = Header::<SEGMENT_SIZE>::from_bytes(header_bytes)
-        .expect("should be able to decode the header");
 
+    #[allow(clippy::expect_used)]
+    let header =
+        Header::<S>::from_bytes(header_bytes).expect("should be able to decode the header");
+
+    #[allow(clippy::expect_used)]
     let key = FloeKey::try_from([0u8; 32].as_slice()).expect("should be able to create a zero key");
+    #[allow(clippy::unwrap_used)]
     let decryptor = FloeDecryptor::new(&key, AAD, &header).unwrap();
 
     let mut decrypted: Vec<u8> = vec![];
     let mut plaintext_segment = vec![0u8; decryptor.plaintext_size()];
-    let segments = ciphertext[header_length..].chunks(SEGMENT_SIZE as usize);
+    let segments = ciphertext[header_length..].chunks(S as usize);
     let num_segments = segments.len();
 
     for (segment_number, segment) in segments.enumerate() {
         let is_final = segment_number == num_segments - 1;
+        #[allow(clippy::expect_used)]
         let segment = Segment::from_bytes(segment).expect("We should be able to parse the segment");
 
         assert_eq!(is_final, segment.is_final());
 
         let buffer = &mut plaintext_segment[..segment.plaintext_size()];
 
+        #[allow(clippy::expect_used)]
         decryptor
             .decrypt_segment(&segment, buffer, segment_number as u64, is_final)
             .expect("should be able to decrypt the segment");
@@ -97,3 +100,46 @@ fn test_vectors() {
 
     assert_eq!(plaintext, decrypted, "The decrypted plaintext should match the original");
 }
+
+macro_rules! create_test {
+    ($file:literal, $segment_size:expr) => {
+        paste! {
+            #[test]
+            fn [< # test_$file:lower >]() {
+                const SEGMENT_SIZE: u32 = $segment_size;
+
+                let ciphertext = read_hex_file(&format!("test-vectors/{}_ct.txt", $file));
+                let plaintext = read_hex_file(&format!("test-vectors/{}_pt.txt", $file));
+
+                decrypt_test_vector::<SEGMENT_SIZE>(&ciphertext, &plaintext);
+            }
+        }
+    };
+}
+
+create_test!("rust_GCM256_IV256_64", 64);
+create_test!("rust_GCM256_IV256_4K", 4096);
+create_test!("rust_GCM256_IV256_1M", 1024 * 1024);
+
+create_test!("go_GCM256_IV256_64", 64);
+create_test!("go_GCM256_IV256_4K", 4096);
+create_test!("go_GCM256_IV256_1M", 1024 * 1024);
+
+create_test!("cpp_GCM256_IV256_64", 64);
+create_test!("cpp_GCM256_IV256_4K", 4096);
+create_test!("cpp_GCM256_IV256_1M", 1024 * 1024);
+
+create_test!("java_GCM256_IV256_64", 64);
+create_test!("java_GCM256_IV256_4K", 4096);
+create_test!("java_GCM256_IV256_1M", 1024 * 1024);
+
+create_test!("pub_java_GCM256_IV256_64", 64);
+create_test!("pub_java_GCM256_IV256_4K", 4096);
+create_test!("pub_java_GCM256_IV256_1M", 1024 * 1024);
+create_test!("java_lastSegAligned", 40);
+create_test!("java_lastSegEmpty", 40);
+
+// TODO: We need to be able to specify a custom AEAD_ROTATION_MASK for the test
+// vectors with a rotation suffix.
+//
+// create_test!("rust_rotation", 1024 * 1024);

@@ -15,6 +15,13 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+// TODO: Add the higher level public streaming/online functions
+// https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
+
+// TODO: Add methods where the user doesn't need to allocate buffers manually.
+
+// TODO: Allow the AEAD_ROTATION_MASK to be overridden.
+
 mod keys;
 mod result;
 mod types;
@@ -61,9 +68,5 @@ pub trait FloeAead: AeadInOut + KeyInit {
     const AEAD_MAX_SEGMENTS: u64;
 }
 
-// TODO: Add the higher level public streaming/online functions
-// https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
-
-// TODO: Add methods where the user doesn't need to allocate buffers manually.
 #[cfg(all(test, feature = "std", feature = "floe-gcm", feature = "getrandom"))]
 mod tests;

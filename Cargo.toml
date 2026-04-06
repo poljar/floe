@@ -56,3 +56,4 @@ zeroize = { version = "1.8.2", optional= true, features = ["zeroize_derive"] }
 
 [dev-dependencies]
 hex = "0.4.3"
+pastey = "0.2.1"
