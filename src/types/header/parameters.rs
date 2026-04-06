@@ -17,11 +17,6 @@ use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, Unaligne
 
 use crate::{FloeAead, FloeKdf};
 
-/// The length of the encoded parameters.
-///
-/// Is always 10 bytes long.
-pub(super) const PARAMETER_INFO_LENGTH: usize = 10;
-
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout,
 )]

@@ -18,16 +18,10 @@ pub(crate) mod tag;
 
 use core::marker::PhantomData;
 
-use digest::typenum::Unsigned;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 use crate::{
-    FloeAead, FloeKdf, HeaderTag, Parameters,
-    result::HeaderDecodeError,
-    types::{
-        floe_iv::FloeIv,
-        header::{parameters::PARAMETER_INFO_LENGTH, tag::HeaderTagSize},
-    },
+    FloeAead, FloeKdf, HeaderTag, Parameters, result::HeaderDecodeError, types::floe_iv::FloeIv,
 };
 
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
@@ -60,7 +54,7 @@ where
     K: FloeKdf,
 {
     pub const fn length() -> usize {
-        PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
+        size_of::<Header<A, K, N>>()
     }
 
     pub(crate) fn new<const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {

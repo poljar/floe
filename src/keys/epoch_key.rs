@@ -19,7 +19,7 @@ use zerocopy::{FromBytes, Immutable};
 
 use crate::{
     DecryptionError, EncryptionError,
-    types::segment::{NON_FINAL_SEGMENT_HEADER, SEGMENT_HEADER_LENGTH, Segment, SegmentMut},
+    types::segment::{NON_FINAL_SEGMENT_HEADER, Segment, SegmentMut},
     utils::segment_overhead,
 };
 
@@ -107,7 +107,7 @@ where
         let tag = aead.encrypt_inout_detached(&nonce, &associated_data, plaintext_buffer.into())?;
 
         // Copy the rest of the important data into the segment.
-        segment.header.copy_from_slice(&header);
+        segment.header.set(header);
         segment.nonce.copy_from_slice(&nonce);
         segment.tag.copy_from_slice(&tag);
 
@@ -131,7 +131,7 @@ where
         buffer: &mut [u8],
     ) -> Result<(), DecryptionError> {
         debug_assert_eq!(
-            segment.ciphertext.len(),
+            segment.ciphertext().len(),
             buffer.len(),
             "The ciphertext and output buffer for the plaintext should have the same size"
         );
@@ -142,14 +142,14 @@ where
 
         // Copy the ciphertext into the output buffer, the AEAD will replace the
         // ciphertext with the plaintext.
-        buffer.copy_from_slice(segment.ciphertext);
+        buffer.copy_from_slice(segment.ciphertext());
 
         // Finally, decrypt the ciphertext.
         Ok(aead.decrypt_inout_detached(
-            segment.nonce,
+            segment.nonce(),
             &associated_data,
             buffer.into(),
-            segment.tag,
+            segment.tag(),
         )?)
     }
 
@@ -187,10 +187,7 @@ where
         aad
     }
 
-    fn build_segment_header(
-        plaintext_buffer_length: usize,
-        is_final: bool,
-    ) -> [u8; SEGMENT_HEADER_LENGTH] {
+    fn build_segment_header(plaintext_buffer_length: usize, is_final: bool) -> u32 {
         // Calculate the correct header, depending on if the segment is final or not.
         //
         // If it's the final segment, we're putting the length of the segment into the
@@ -206,15 +203,16 @@ where
                     to the length of the final segment shouldn't overflow",
                 );
 
-            // The constructor panics also if we can't encode the final segment length into
-            // a `u32`.
+            // SAFETY: The constructor panics also if we can't encode the final segment
+            // length into a `u32`.
             #[allow(clippy::expect_used)]
             let final_segment_length: u32 = final_segment_length
                 .try_into()
                 .expect("The length of the final encrypted segment should fit into 32 bits");
 
-            final_segment_length.to_be_bytes()
+            final_segment_length
         } else {
+            // Non-final segments get u32::MAX as the header.
             NON_FINAL_SEGMENT_HEADER
         }
     }

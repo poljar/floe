@@ -28,7 +28,11 @@ pub struct HeaderTag {
 }
 
 impl HeaderTag {
-    pub fn as_bytes(&self) -> &[u8; HeaderTagSize::USIZE] {
+    pub const fn length() -> usize {
+        HeaderTagSize::USIZE
+    }
+
+    pub fn as_array(&self) -> &[u8; HeaderTagSize::USIZE] {
         #[allow(clippy::expect_used)]
         self.inner.as_array().expect("We should be able to convert the Array to a primitive array")
     }

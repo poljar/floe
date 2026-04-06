@@ -104,12 +104,12 @@ where
             return Err(DecryptionError::MalformedSegment);
         }
 
-        let ciphertext_length = segment.ciphertext.len();
+        let ciphertext_length = segment.ciphertext().len();
         let buffer_length = buffer.len();
         let allowed_ciphertext_length = self.plaintext_size();
 
         if is_final {
-            if segment.ciphertext.len() > allowed_ciphertext_length {
+            if segment.ciphertext().len() > allowed_ciphertext_length {
                 return Err(DecryptionError::MalformedSegment);
             }
 
@@ -117,7 +117,7 @@ where
                 return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
             }
         } else {
-            if segment.ciphertext.len() != allowed_ciphertext_length {
+            if segment.ciphertext().len() != allowed_ciphertext_length {
                 return Err(DecryptionError::MalformedSegment);
             }
 

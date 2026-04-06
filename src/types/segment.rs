@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use aead::{AeadCore, AeadInOut, Nonce, Tag, array::ArraySize};
-use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
+use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U32, Unaligned};
 
 use crate::{EncryptionError, result::SegmentDecodeError, utils::segment_overhead};
 
@@ -28,11 +28,10 @@ use crate::{EncryptionError, result::SegmentDecodeError, utils::segment_overhead
 /// [u32::MAX]. This means that the ciphertext and consequently the plaintext
 /// segment need to smaller than u32::MAX because the encrypted segment needs to
 /// fit the header, nonce, and tag into the allocated buffer.
-pub(crate) const SEGMENT_HEADER_LENGTH: usize = 4;
+pub(crate) const SEGMENT_HEADER_LENGTH: usize = size_of::<u32>();
 
 /// The segment header for any non-final encrypted segment.
-pub(crate) const NON_FINAL_SEGMENT_HEADER: [u8; SEGMENT_HEADER_LENGTH] =
-    [0xFFu8; SEGMENT_HEADER_LENGTH];
+pub(crate) const NON_FINAL_SEGMENT_HEADER: u32 = u32::MAX;
 
 #[derive(FromBytes, IntoBytes, Immutable, KnownLayout)]
 #[repr(C)]
@@ -40,7 +39,7 @@ struct InnerSegment<A>
 where
     A: AeadInOut,
 {
-    header: [u8; SEGMENT_HEADER_LENGTH],
+    header: U32<BigEndian>,
     nonce: Nonce<A>,
     ciphertext: [u8],
 }
@@ -48,13 +47,11 @@ where
 pub struct Segment<'a, A>
 where
     A: AeadInOut,
-    <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
-    <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
 {
-    pub(crate) header: &'a [u8; SEGMENT_HEADER_LENGTH],
-    pub(crate) nonce: &'a Nonce<A>,
-    pub(crate) ciphertext: &'a [u8],
-    pub(crate) tag: &'a Tag<A>,
+    header: &'a U32<BigEndian>,
+    nonce: &'a Nonce<A>,
+    ciphertext: &'a [u8],
+    tag: &'a Tag<A>,
 }
 
 impl<'a, A> Segment<'a, A>
@@ -76,9 +73,8 @@ where
         let segment = Segment { header, nonce, ciphertext, tag };
 
         if segment.is_final() {
-            let length: usize = u32::from_be_bytes(*segment.header)
-                .try_into()
-                .map_err(|_| SegmentDecodeError::MalformedSegment)?;
+            let length: usize =
+                segment.header().try_into().map_err(|_| SegmentDecodeError::MalformedSegment)?;
 
             if length != bytes.len() {
                 return Err(SegmentDecodeError::MalformedSegment);
@@ -88,8 +84,24 @@ where
         Ok(segment)
     }
 
+    pub fn header(&self) -> u32 {
+        self.header.get()
+    }
+
+    pub fn nonce(&self) -> &Nonce<A> {
+        self.nonce
+    }
+
+    pub fn tag(&self) -> &Tag<A> {
+        self.tag
+    }
+
+    pub fn ciphertext(&self) -> &[u8] {
+        self.ciphertext
+    }
+
     pub fn is_final(&self) -> bool {
-        self.header != &NON_FINAL_SEGMENT_HEADER
+        *self.header != NON_FINAL_SEGMENT_HEADER
     }
 
     pub const fn plaintext_size(&self) -> usize {
@@ -101,7 +113,7 @@ pub(crate) struct SegmentMut<'a, A>
 where
     A: AeadInOut,
 {
-    pub(crate) header: &'a mut [u8; SEGMENT_HEADER_LENGTH],
+    pub(crate) header: &'a mut U32<BigEndian>,
     pub(crate) nonce: &'a mut Nonce<A>,
     pub(crate) ciphertext: &'a mut [u8],
     pub(crate) tag: &'a mut Tag<A>,
