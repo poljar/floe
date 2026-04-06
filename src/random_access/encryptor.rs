@@ -17,6 +17,11 @@ use core::ops::Sub;
 
 use aead::{AeadCore, Key, KeySizeUser, array::ArraySize, consts::U32};
 use digest::OutputSizeUser;
+#[cfg(feature = "getrandom")]
+use getrandom::SysRng;
+use rand_core::CryptoRng;
+#[cfg(feature = "getrandom")]
+use rand_core::UnwrapErr;
 use zerocopy::{FromBytes, Immutable, IntoBytes, Unaligned};
 
 use crate::{
@@ -58,18 +63,29 @@ where
     <H as OutputSizeUser>::OutputSize: Sub<<H as FloeKdf>::KeySize>,
     <<H as OutputSizeUser>::OutputSize as Sub<<H as FloeKdf>::KeySize>>::Output: ArraySize,
 {
+    #[cfg(feature = "getrandom")]
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
+        #[allow(clippy::expect_used)]
+        Self::with_rng(key, associated_data, &mut UnwrapErr(SysRng))
+            .expect("should be able to generate enough randomness for the Floe IV")
+    }
+
+    pub fn with_rng<R: CryptoRng>(
+        key: &Key<A>,
+        associated_data: &'a [u8],
+        rng: &mut R,
+    ) -> Result<Self, R::Error> {
         check_segment_size::<A, S>();
 
         let floe_key = FloeKey::new(key);
-        let floe_iv = FloeIv::generate();
+        let floe_iv = FloeIv::generate(rng)?;
 
         let header_tag = floe_key.derive_header_tag::<N, S>(&floe_iv, associated_data);
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
         let header = Header::new(floe_iv, header_tag);
 
-        Self { message_key, header, associated_data }
+        Ok(Self { message_key, header, associated_data })
     }
 
     pub fn input_size(&self) -> usize {
@@ -95,6 +111,7 @@ where
         &self.header
     }
 
+    #[cfg(feature = "getrandom")]
     pub fn encrypt_segment(
         &self,
         plaintext: &[u8],
@@ -102,6 +119,21 @@ where
         segment_number: u64,
         is_final: bool,
     ) -> Result<(), EncryptionError> {
+        let mut rng = UnwrapErr(SysRng);
+        self.encrypt_segment_with_rng(plaintext, buffer, segment_number, is_final, &mut rng)
+    }
+
+    pub fn encrypt_segment_with_rng<R>(
+        &self,
+        plaintext: &[u8],
+        buffer: &mut [u8],
+        segment_number: u64,
+        is_final: bool,
+        rng: &mut R,
+    ) -> Result<(), EncryptionError>
+    where
+        R: CryptoRng,
+    {
         let allowed_plaintext_length = self.input_size();
         let plaintext_length = plaintext.len();
 
@@ -142,6 +174,6 @@ where
         );
 
         // And finally we encrypt the segment.
-        epoch_key.encrypt_segment(segment)
+        epoch_key.encrypt_segment(segment, rng)
     }
 }

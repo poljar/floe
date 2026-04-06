@@ -65,5 +65,5 @@ pub trait FloeAead: AeadInOut + KeyInit {
 // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#public-streamingonline-function
 
 // TODO: Add methods where the user doesn't need to allocate buffers manually.
-#[cfg(all(test, feature = "std", feature = "floe-gcm"))]
+#[cfg(all(test, feature = "std", feature = "floe-gcm", feature = "getrandom"))]
 mod tests;

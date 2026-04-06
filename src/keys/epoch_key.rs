@@ -13,10 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::{
-    AeadCore, AeadInOut, Generate, Key, KeyInit, Nonce, array::ArraySize, rand_core::UnwrapErr,
-};
-use rand::rngs::SysRng;
+use aead::{AeadCore, AeadInOut, Generate, Key, KeyInit, Nonce, array::ArraySize};
+use rand_core::CryptoRng;
 use zerocopy::{FromBytes, Immutable};
 
 use crate::{
@@ -79,7 +77,14 @@ where
     /// * length of the encrypted segment can't fit into a `u32`
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
-    pub(crate) fn encrypt_segment(self, segment: SegmentMut<'_, A>) -> Result<(), EncryptionError> {
+    pub(crate) fn encrypt_segment<R>(
+        self,
+        segment: SegmentMut<'_, A>,
+        rng: &mut R,
+    ) -> Result<(), EncryptionError>
+    where
+        R: CryptoRng,
+    {
         // Creating a SegmentMut has already copied the plaintext into the ciphertext
         // field, let's just create a borrow of that field for our convenience.
         let plaintext_buffer = segment.ciphertext;
@@ -91,9 +96,8 @@ where
         let header = Self::build_segment_header(plaintext_buffer.len(), self.is_final);
 
         // Generate a new random AEAD nonce.
-        // TODO: We should let the user provide the RNG?
-        let mut rng = UnwrapErr(SysRng);
-        let nonce = Nonce::<A>::generate_from_rng(&mut rng);
+        let nonce = Nonce::<A>::try_generate_from_rng(rng)
+            .map_err(|_| EncryptionError::NonceGenerationFailed)?;
 
         // Create the AEAD and build the associated data for this segment.
         let aead = A::new(&self.key);

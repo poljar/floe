@@ -49,6 +49,9 @@ pub enum EncryptionError {
 
     #[error("the plaintext has an incorrect length, expected: {expected}, got {got}")]
     InvalidPlaintextLength { expected: usize, got: usize },
+
+    #[error("the random nonce for the segment couldn't be generated")]
+    NonceGenerationFailed,
 }
 
 #[derive(Debug, Error)]

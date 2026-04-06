@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::rand_core::UnwrapErr;
-use rand::{Rng, rngs::SysRng};
+use rand_core::CryptoRng;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 // TODO: We could use `const N: u16` for the generics here, this would be enough
@@ -35,12 +34,11 @@ pub struct FloeIv<const N: usize> {
 
 impl<const N: usize> FloeIv<N> {
     /// Generate a new random [`FloeIv`].
-    pub fn generate() -> Self {
-        let mut rng = UnwrapErr(SysRng);
+    pub(crate) fn generate<R: CryptoRng>(rng: &mut R) -> Result<Self, R::Error> {
         let mut floe_iv = [0u8; N];
-        rng.fill_bytes(&mut floe_iv);
+        rng.try_fill_bytes(&mut floe_iv)?;
 
-        Self { inner: floe_iv }
+        Ok(Self { inner: floe_iv })
     }
 
     /// Get the underlying raw byte array of this [`FloeIv`].
