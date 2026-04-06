@@ -36,7 +36,11 @@ use digest::{KeyInit, Mac};
 
 pub use crate::{
     result::{DecryptionError, EncryptionError},
-    types::{header::Header, segment::Segment},
+    types::{
+        floe_iv::FloeIv,
+        header::{Header, parameters::Parameters, tag::HeaderTag},
+        segment::Segment,
+    },
 };
 
 pub trait FloeKdf: Mac + KeyInit {

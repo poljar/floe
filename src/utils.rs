@@ -17,10 +17,7 @@ use aead::{AeadCore, Key};
 use digest::{KeyInit, typenum::Unsigned};
 use zerocopy::IntoBytes;
 
-use crate::{
-    FloeAead, FloeKdf,
-    types::{floe_iv::FloeIv, header::Parameters, segment::SEGMENT_HEADER_LENGTH},
-};
+use crate::{FloeAead, FloeIv, FloeKdf, Parameters, types::segment::SEGMENT_HEADER_LENGTH};
 
 /// Calculate how many bytes an encrypted segment would contain in addition to
 /// the ciphertext.
@@ -106,7 +103,7 @@ where
             "the KDF input key material should be big enough as this is determined by AEAD_KEY_LEN",
         )
         .chain_update(params.as_bytes())
-        .chain_update(floe_iv.as_bytes())
+        .chain_update(floe_iv.as_array())
         .chain_update(purpose)
         .chain_update(associated_data)
         .chain_update([1])

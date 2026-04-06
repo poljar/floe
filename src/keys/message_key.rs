@@ -25,11 +25,7 @@ use zerocopy::IntoBytes;
 use zeroize::Zeroize;
 
 use super::epoch_key::EpochKey;
-use crate::{
-    FloeAead, FloeKdf,
-    keys::FloeKdfKey,
-    types::{floe_iv::FloeIv, header::Parameters},
-};
+use crate::{FloeAead, FloeIv, FloeKdf, Parameters, keys::FloeKdfKey};
 
 /// The [`MessageKey`] of a Floe session.
 ///
@@ -98,7 +94,7 @@ where
                  by KDF_KEY_LEN parameter",
             )
             .chain_update(parameters.as_bytes())
-            .chain_update(floe_iv.as_bytes())
+            .chain_update(floe_iv.as_array())
             .chain_update(purpose)
             .chain_update(associated_data)
             .chain_update([1])

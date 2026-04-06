@@ -42,7 +42,7 @@ impl<const N: usize> FloeIv<N> {
     }
 
     /// Get the underlying raw byte array of this [`FloeIv`].
-    pub fn as_bytes(&self) -> &[u8; N] {
+    pub fn as_array(&self) -> &[u8; N] {
         &self.inner
     }
 }
