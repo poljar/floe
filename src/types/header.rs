@@ -18,17 +18,59 @@ use core::marker::PhantomData;
 use aead::{array::Array, consts::U32};
 use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
-use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
+use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
-use crate::{
-    FloeAead, FloeKdf,
-    result::HeaderDecodeError,
-    types::floe_iv::FloeIv,
-    utils::{PARAMETER_INFO_LENGTH, encoded_parameters},
-};
+use crate::{FloeAead, FloeKdf, result::HeaderDecodeError, types::floe_iv::FloeIv};
 
 /// The size of the header tag.
-pub(crate) type HeaderTagSize = U32;
+type HeaderTagSize = U32;
+
+/// The length of the encoded parameters.
+///
+/// Is always 10 bytes long.
+const PARAMETER_INFO_LENGTH: usize = 10;
+
+#[derive(Debug, PartialEq, Eq, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
+#[repr(C)]
+pub struct Parameters {
+    aead_id: u8,
+    kdf_id: u8,
+    segment_length: zerocopy::U32<BigEndian>,
+    floe_iv_length: zerocopy::U32<BigEndian>,
+}
+
+impl Parameters {
+    /// Create a new set of Floe parameters.
+    ///
+    /// This is the `PARAM_ENCODE(params) -> bytes` function from the [spec].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the Floe IV length (N) is too large, it
+    /// needs to fit into a `u32`.
+    ///
+    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
+    pub(crate) fn new<A, K, const N: usize, const S: u32>() -> Self
+    where
+        A: FloeAead,
+        K: FloeKdf,
+    {
+        // The floe IV length, needs to converted to an u32 as the Floe spec expects 4
+        // bytes. See the TODO item in the floe_iv.rs file how we can avoid this
+        // panic in the future.
+        #[allow(clippy::expect_used)]
+        let floe_iv_length =
+            u32::try_from(N).expect("the Floe IV is too long, it must be smaller than u32::MAX");
+        let floe_iv_length = zerocopy::U32::new(floe_iv_length);
+
+        Self {
+            aead_id: A::AEAD_ID,
+            kdf_id: K::KDF_ID,
+            segment_length: zerocopy::U32::new(S),
+            floe_iv_length,
+        }
+    }
+}
 
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
 #[repr(transparent)]
@@ -56,7 +98,7 @@ where
     A: FloeAead,
     H: FloeKdf,
 {
-    parameter_info: [u8; PARAMETER_INFO_LENGTH],
+    parameters: Parameters,
     floe_iv: FloeIv<N>,
     tag: HeaderTag,
     aead: PhantomData<A>,
@@ -83,11 +125,11 @@ where
     }
 
     pub(crate) fn new(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
-        let parameter_info = encoded_parameters::<A, H, N, S>();
+        let parameters = Parameters::new::<A, H, N, S>();
 
         Self {
             inner: InnerHeader {
-                parameter_info,
+                parameters,
                 floe_iv,
                 tag: header_tag,
                 aead: PhantomData,
@@ -101,10 +143,13 @@ where
             HeaderDecodeError::InvalidLength { expected: Self::length(), got: bytes.len() }
         })?;
 
-        let expected_parameters = encoded_parameters::<A, H, N, S>();
+        let expected_parameters = Parameters::new::<A, H, N, S>();
 
-        if expected_parameters != inner.parameter_info {
-            Err(HeaderDecodeError::InvalidParameters)
+        if expected_parameters != inner.parameters {
+            Err(HeaderDecodeError::InvalidParameters {
+                expected: expected_parameters,
+                got: inner.parameters,
+            })
         } else {
             Ok(Self { inner })
         }
@@ -114,14 +159,17 @@ where
         self.inner.as_bytes()
     }
 
-    pub fn parameters(&self) -> &[u8; PARAMETER_INFO_LENGTH] {
-        &self.inner.parameter_info
+    /// Get the encoded parameters of this header.
+    pub fn parameters(&self) -> &Parameters {
+        &self.inner.parameters
     }
 
+    /// Get the Floe initialization vector contained in this header.
     pub fn iv(&self) -> &FloeIv<N> {
         &self.inner.floe_iv
     }
 
+    /// Get the tag of this header.
     pub fn tag(&self) -> &HeaderTag {
         &self.inner.tag
     }

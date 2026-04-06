@@ -20,12 +20,15 @@ use aead::{
     array::{Array, ArraySize},
 };
 use digest::{KeyInit, OutputSizeUser};
+use zerocopy::IntoBytes;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
 use super::epoch_key::EpochKey;
 use crate::{
-    FloeAead, FloeKdf, keys::FloeKdfKey, types::floe_iv::FloeIv, utils::encoded_parameters,
+    FloeAead, FloeKdf,
+    keys::FloeKdfKey,
+    types::{floe_iv::FloeIv, header::Parameters},
 };
 
 /// The [`MessageKey`] of a Floe session.
@@ -83,6 +86,8 @@ where
         purpose[..4].copy_from_slice(b"DEK:");
         purpose[4..].copy_from_slice(&masked_counter.to_be_bytes());
 
+        let parameters = Parameters::new::<A, H, N, S>();
+
         // We're not reusing the `crate::utils::floe_kdf` function here for type safety
         // reasons. We're using the `FloeKdfKey<H>` here, while the `floe_kdf`
         // function expects a `Key<A>`.
@@ -92,7 +97,7 @@ where
                 "the KDF input key material should be big enough as this is determined \
                  by KDF_KEY_LEN parameter",
             )
-            .chain_update(encoded_parameters::<A, H, N, S>())
+            .chain_update(parameters.as_bytes())
             .chain_update(floe_iv.as_bytes())
             .chain_update(purpose)
             .chain_update(associated_data)

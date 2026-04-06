@@ -15,16 +15,12 @@
 
 use aead::{AeadCore, Key};
 use digest::{KeyInit, typenum::Unsigned};
+use zerocopy::IntoBytes;
 
 use crate::{
     FloeAead, FloeKdf,
-    types::{floe_iv::FloeIv, segment::SEGMENT_HEADER_LENGTH},
+    types::{floe_iv::FloeIv, header::Parameters, segment::SEGMENT_HEADER_LENGTH},
 };
-
-/// The length of the encoded parameters.
-///
-/// Is always 10 bytes long.
-pub(crate) const PARAMETER_INFO_LENGTH: usize = 10;
 
 /// Calculate how many bytes an encrypted segment would contain in addition to
 /// the ciphertext.
@@ -53,44 +49,6 @@ where
     (TryInto::<usize>::try_into(S).expect("The encrypted segment size should fit into a u32"))
         .checked_sub(segment_overhead::<A>())
         .expect("The encrypted segment size should be bigger than the segment overhead")
-}
-
-/// Encode the set of Floe parameters into a byte array.
-///
-/// This is the `PARAM_ENCODE(params) -> bytes` function from the [spec].
-///
-/// # Panics
-///
-/// This function will panic if the Floe IV length (N) is too large, it needs to
-/// fit into a `u32`.
-///
-/// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
-pub(crate) fn encoded_parameters<A, H, const N: usize, const S: u32>() -> [u8; PARAMETER_INFO_LENGTH]
-where
-    A: FloeAead,
-    H: FloeKdf,
-{
-    let mut output = [0u8; PARAMETER_INFO_LENGTH];
-
-    // AEAD_ID
-    output[0] = A::AEAD_ID;
-    // KDF_IF
-    output[1] = H::KDF_ID;
-
-    // The segment length, encoded as a big-endian value.
-    let segment_length = S.to_be_bytes();
-    output[2..6].copy_from_slice(&segment_length);
-
-    // The floe IV length, needs to converted to an u32 as the Floe spec expects 4
-    // bytes. See the TODO item in the floe_iv.rs file how we can avoid this
-    // panic in the future.
-    #[allow(clippy::expect_used)]
-    let floe_iv_length =
-        u32::try_from(N).expect("the Floe IV is too long, it must be smaller than u32::MAX");
-    let floe_iv_length = floe_iv_length.to_be_bytes();
-    output[6..].copy_from_slice(&floe_iv_length);
-
-    output
 }
 
 /// Check the user-provided encrypted segment size has left enough space for the
@@ -135,7 +93,7 @@ where
     A: FloeAead,
     H: FloeKdf,
 {
-    let params = encoded_parameters::<A, H, N, S>();
+    let params = Parameters::new::<A, H, N, S>();
 
     // TODO: This should probably use the Hkdf crate to make it more clear that this
     // should be a KDF, not a MAC. Shouldn't matter for correctness as we're
@@ -147,7 +105,7 @@ where
         .expect(
             "the KDF input key material should be big enough as this is determined by AEAD_KEY_LEN",
         )
-        .chain_update(params)
+        .chain_update(params.as_bytes())
         .chain_update(floe_iv.as_bytes())
         .chain_update(purpose)
         .chain_update(associated_data)

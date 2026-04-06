@@ -15,6 +15,8 @@
 
 use thiserror::Error;
 
+use crate::types::header::Parameters;
+
 #[derive(Debug, Error)]
 pub enum DecryptionError {
     #[error("the ciphertext couldn't be decrypted")]
@@ -59,8 +61,11 @@ pub enum HeaderDecodeError {
     #[error("the given header has an incorrect length, expected {expected}, got {got}")]
     InvalidLength { expected: usize, got: usize },
 
-    #[error("the given header has different Floe parameters compared to what was configured")]
-    InvalidParameters,
+    #[error(
+        "the given header has different Floe parameters compared to what was configured \
+        in the decryptor, expected: {expected:?}, got: {got:?}"
+    )]
+    InvalidParameters { expected: Parameters, got: Parameters },
 }
 
 #[derive(Debug, Error)]

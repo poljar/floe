@@ -31,8 +31,10 @@ fn read_hex_file(file_name: &str) -> Vec<u8> {
 
 #[test]
 fn test_aes_gcm() {
+    const SEGMENT_SIZE: u32 = 64;
+
     let key = FloeKey::from([0u8; 32]);
-    let encryptor = FloeEncryptor::<64>::new(&key, &[]);
+    let encryptor = FloeEncryptor::<SEGMENT_SIZE>::new(&key, &[]);
 
     let plaintext = b"Hello world";
     let output_size = encryptor.output_size(plaintext);
@@ -42,7 +44,7 @@ fn test_aes_gcm() {
         .encrypt_segment(plaintext, &mut buffer, 0, true)
         .expect("We should be able to encrypt the segment");
 
-    let decryptor = FloeDecryptor::<64>::new(&key, &[], encryptor.header()).unwrap();
+    let decryptor = FloeDecryptor::<SEGMENT_SIZE>::new(&key, &[], encryptor.header()).unwrap();
     let mut decryption_buffer = vec![0u8; 11];
 
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
@@ -68,13 +70,12 @@ fn decrypt_test_vector<const S: u32>(ciphertext: &[u8], plaintext: &[u8]) {
     let header_bytes = &ciphertext[..header_length];
 
     #[allow(clippy::expect_used)]
-    let header =
-        Header::<S>::from_bytes(header_bytes).expect("should be able to decode the header");
+    let header = Header::from_bytes(header_bytes).expect("should be able to decode the header");
 
     #[allow(clippy::expect_used)]
     let key = FloeKey::try_from([0u8; 32].as_slice()).expect("should be able to create a zero key");
     #[allow(clippy::unwrap_used)]
-    let decryptor = FloeDecryptor::new(&key, AAD, &header).unwrap();
+    let decryptor = FloeDecryptor::<S>::new(&key, AAD, &header).unwrap();
 
     let mut decrypted: Vec<u8> = vec![];
     let mut plaintext_segment = vec![0u8; decryptor.plaintext_size()];
