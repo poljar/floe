@@ -15,7 +15,7 @@
 
 use aead::{AeadCore, AeadInOut, Generate, Key, KeyInit, Nonce, array::ArraySize};
 use rand_core::CryptoRng;
-use zerocopy::{FromBytes, Immutable};
+use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U64};
 
 use crate::{
     DecryptionError, EncryptionError,
@@ -23,11 +23,29 @@ use crate::{
     utils::segment_overhead,
 };
 
-/// The length of the AEAD additional associated data.
+/// The additional associated data for the AEAD.
 ///
 /// Defined as the 64 bit segment number encoded as a big endian value (8 bytes)
 /// and a `is_final` flag (1 byte).
-const ASSOCIATED_DATA_LENGTH: usize = 9;
+///
+/// This is not the same associated data the caller has given us. This
+/// associated data binds the segment number and whether the segment is
+/// the final one to the ciphertext.
+///
+/// This implements a part of the `encryptSegment` and `decryptSegment`
+/// function from the [spec], namely:
+///
+/// ```text
+/// aead_aad = I2BE(position, 8) || aad_tail
+/// ```
+///
+/// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
+#[derive(Debug, IntoBytes, Immutable, KnownLayout)]
+#[repr(C)]
+struct AssociatedData {
+    segment_number: U64<BigEndian>,
+    is_final: bool,
+}
 
 /// The key to encrypt or decrypt a segment.
 ///
@@ -93,7 +111,7 @@ where
         //
         // If it's the final segment, we're putting the length of the segment into the
         // header, otherwise a static placeholder header is used.
-        let header = Self::build_segment_header(plaintext_buffer.len(), self.is_final);
+        let header = Self::segment_header(plaintext_buffer.len(), self.is_final);
 
         // Generate a new random AEAD nonce.
         let nonce = Nonce::<A>::try_generate_from_rng(rng)
@@ -101,10 +119,14 @@ where
 
         // Create the AEAD and build the associated data for this segment.
         let aead = A::new(&self.key);
-        let associated_data = self.build_segment_associated_data();
+        let associated_data = self.associated_data();
 
         // Encrypt the plaintext and return the AEAD tag.
-        let tag = aead.encrypt_inout_detached(&nonce, &associated_data, plaintext_buffer.into())?;
+        let tag = aead.encrypt_inout_detached(
+            &nonce,
+            associated_data.as_bytes(),
+            plaintext_buffer.into(),
+        )?;
 
         // Copy the rest of the important data into the segment.
         segment.header.set(header);
@@ -138,7 +160,7 @@ where
 
         // Create the AEAD and build the associated data for this segment.
         let aead = A::new(&self.key);
-        let associated_data = self.build_segment_associated_data();
+        let associated_data = self.associated_data();
 
         // Copy the ciphertext into the output buffer, the AEAD will replace the
         // ciphertext with the plaintext.
@@ -147,7 +169,7 @@ where
         // Finally, decrypt the ciphertext.
         Ok(aead.decrypt_inout_detached(
             segment.nonce(),
-            &associated_data,
+            associated_data.as_bytes(),
             buffer.into(),
             segment.tag(),
         )?)
@@ -155,39 +177,11 @@ where
 
     /// Create an array of associated data for the segment
     /// encryption/decryption.
-    ///
-    /// This is not the same associated data the caller has given us. This
-    /// associated data binds the segment number and whether the segment is
-    /// the final one to the ciphertext.
-    ///
-    /// This implements a part of the `encryptSegment` and `decryptSegment`
-    /// function from the [spec], namely:
-    ///
-    /// ```text
-    /// aead_aad = I2BE(position, 8) || aad_tail
-    /// ```
-    ///
-    /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
-    fn build_segment_associated_data(&self) -> [u8; ASSOCIATED_DATA_LENGTH] {
-        let mut aad = [0u8; ASSOCIATED_DATA_LENGTH];
-
-        // SAFETY: Casting a bool to an u8 [is fine]:
-        //
-        // > The bool represents a value, which could only
-        // > be either true or false. If you cast a bool into an integer, true will be 1
-        // > and false
-        // > will be 0.
-        //
-        // [is fine]: https://doc.rust-lang.org/std/primitive.bool.html
-        let aad_tail = self.is_final as u8;
-
-        aad[0..8].copy_from_slice(&self.segment_number.to_be_bytes());
-        aad[8] = aad_tail;
-
-        aad
+    fn associated_data(&self) -> AssociatedData {
+        AssociatedData { segment_number: U64::new(self.segment_number), is_final: self.is_final }
     }
 
-    fn build_segment_header(plaintext_buffer_length: usize, is_final: bool) -> u32 {
+    fn segment_header(plaintext_buffer_length: usize, is_final: bool) -> u32 {
         // Calculate the correct header, depending on if the segment is final or not.
         //
         // If it's the final segment, we're putting the length of the segment into the
