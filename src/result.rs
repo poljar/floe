@@ -36,6 +36,12 @@ pub enum DecryptionError {
 
     #[error("the segment is too big")]
     MalformedSegment,
+
+    #[error(
+        "the given header has different Floe parameters compared to what was configured \
+        in the decryptor, expected: {expected:?}, got: {got:?}"
+    )]
+    InvalidParameters { expected: Parameters, got: Parameters },
 }
 
 #[derive(Debug, Error)]
@@ -60,12 +66,6 @@ pub enum EncryptionError {
 pub enum HeaderDecodeError {
     #[error("the given header has an incorrect length, expected {expected}, got {got}")]
     InvalidLength { expected: usize, got: usize },
-
-    #[error(
-        "the given header has different Floe parameters compared to what was configured \
-        in the decryptor, expected: {expected:?}, got: {got:?}"
-    )]
-    InvalidParameters { expected: Parameters, got: Parameters },
 }
 
 #[derive(Debug, Error)]

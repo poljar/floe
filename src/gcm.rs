@@ -43,6 +43,6 @@ pub type FloeEncryptor<'a, const S: u32> =
 pub type FloeDecryptor<'a, const S: u32> =
     crate::random_access::FloeDecryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
 
-pub type Header<const S: u32> = crate::Header<Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
+pub type Header = crate::Header<Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH>;
 
 pub type FloeKey = Key<Aes256Gcm>;

@@ -30,7 +30,9 @@ type HeaderTagSize = U32;
 /// Is always 10 bytes long.
 const PARAMETER_INFO_LENGTH: usize = 10;
 
-#[derive(Debug, PartialEq, Eq, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout,
+)]
 #[repr(C)]
 pub struct Parameters {
     aead_id: u8,
@@ -93,7 +95,7 @@ impl ConstantTimeEq for HeaderTag {
 
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
 #[repr(C)]
-struct InnerHeader<A, H, const N: usize, const S: u32>
+struct InnerHeader<A, H, const N: usize>
 where
     A: FloeAead,
     H: FloeKdf,
@@ -107,15 +109,15 @@ where
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Header<A, H, const N: usize, const S: u32>
+pub struct Header<A, H, const N: usize>
 where
     A: FloeAead,
     H: FloeKdf,
 {
-    inner: InnerHeader<A, H, N, S>,
+    inner: InnerHeader<A, H, N>,
 }
 
-impl<A, H, const N: usize, const S: u32> Header<A, H, N, S>
+impl<A, H, const N: usize> Header<A, H, N>
 where
     A: FloeAead,
     H: FloeKdf,
@@ -124,7 +126,7 @@ where
         PARAMETER_INFO_LENGTH + N + HeaderTagSize::USIZE
     }
 
-    pub(crate) fn new(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
+    pub(crate) fn new<const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
         let parameters = Parameters::new::<A, H, N, S>();
 
         Self {
@@ -143,16 +145,7 @@ where
             HeaderDecodeError::InvalidLength { expected: Self::length(), got: bytes.len() }
         })?;
 
-        let expected_parameters = Parameters::new::<A, H, N, S>();
-
-        if expected_parameters != inner.parameters {
-            Err(HeaderDecodeError::InvalidParameters {
-                expected: expected_parameters,
-                got: inner.parameters,
-            })
-        } else {
-            Ok(Self { inner })
-        }
+        Ok(Self { inner })
     }
 
     pub fn as_bytes(&self) -> &[u8] {

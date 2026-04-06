@@ -42,7 +42,7 @@ where
     H: FloeKdf,
 {
     /// The header of the Floe session.
-    header: Header<A, H, N, S>,
+    header: Header<A, H, N>,
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
     /// The message key, used to derive the AEAD key for the segments.
@@ -83,7 +83,7 @@ where
         let header_tag = floe_key.derive_header_tag::<N, S>(&floe_iv, associated_data);
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
-        let header = Header::new(floe_iv, header_tag);
+        let header = Header::new::<S>(floe_iv, header_tag);
 
         Ok(Self { message_key, header, associated_data })
     }
@@ -107,7 +107,7 @@ where
     ///
     /// The header is usually prepended to the first encrypted segment. It will
     /// be needed to start decrypting segments.
-    pub fn header(&self) -> &Header<A, H, N, S> {
+    pub fn header(&self) -> &Header<A, H, N> {
         &self.header
     }
 

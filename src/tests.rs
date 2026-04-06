@@ -66,7 +66,7 @@ fn test_invalid_key_length() {
 fn decrypt_test_vector<const S: u32>(ciphertext: &[u8], plaintext: &[u8]) {
     const AAD: &[u8] = b"This is AAD";
 
-    let header_length = Header::<S>::length();
+    let header_length = Header::length();
     let header_bytes = &ciphertext[..header_length];
 
     #[allow(clippy::expect_used)]

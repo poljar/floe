@@ -23,7 +23,11 @@ use zerocopy::{FromBytes, Immutable};
 use crate::{
     DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{floe_iv::FloeIv, header::Header, segment::Segment},
+    types::{
+        floe_iv::FloeIv,
+        header::{Header, Parameters},
+        segment::Segment,
+    },
     utils::{check_segment_size, plaintext_size},
 };
 
@@ -53,9 +57,18 @@ where
     pub fn new(
         key: &Key<A>,
         associated_data: &'a [u8],
-        header: &Header<A, H, N, S>,
+        header: &Header<A, H, N>,
     ) -> Result<Self, DecryptionError> {
         check_segment_size::<A, S>();
+
+        let expected_parameters = Parameters::new::<A, H, N, S>();
+
+        if &expected_parameters != header.parameters() {
+            return Err(DecryptionError::InvalidParameters {
+                expected: expected_parameters,
+                got: *header.parameters(),
+            });
+        }
 
         let floe_key = FloeKey::new(key);
 
