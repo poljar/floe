@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::Key;
+use aead::{Key, consts::U48};
 use aes_gcm::Aes256Gcm;
 use hmac::Hmac;
 use sha2::Sha384;
@@ -25,7 +25,7 @@ const FLOE_IV_LENGTH: usize = 32;
 impl FloeKdf for Hmac<Sha384> {
     // As per the Floe spec defined in the derived parameters part:
     // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
-    type KeySize = aead::consts::U48;
+    type KeySize = U48;
     const KDF_ID: u8 = 0;
 }
 

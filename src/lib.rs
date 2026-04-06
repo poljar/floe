@@ -24,6 +24,7 @@
 
 mod keys;
 mod result;
+mod traits;
 mod types;
 mod utils;
 
@@ -31,46 +32,15 @@ mod utils;
 pub mod gcm;
 pub mod random_access;
 
-use aead::{AeadInOut, array::ArraySize};
-use digest::{KeyInit, Mac};
-
 pub use crate::{
     result::{DecryptionError, EncryptionError},
+    traits::{FloeAead, FloeKdf},
     types::{
         floe_iv::FloeIv,
         header::{Header, parameters::Parameters, tag::HeaderTag},
         segment::Segment,
     },
 };
-
-pub trait FloeKdf: Mac + KeyInit {
-    /// The length of the KDF key.
-    ///
-    /// This is called the `KDF_KEY_LEN` in the Floe [specification].
-    ///
-    /// [specification]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#parameters
-    type KeySize: ArraySize;
-
-    /// The unique numeric identifier of this KDF implementation.
-    ///
-    /// Will be used in the [Floe header] as part of the parameters.
-    ///
-    /// [Floe header]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#floe-ciphertext-layout
-    const KDF_ID: u8;
-}
-
-pub trait FloeAead: AeadInOut + KeyInit {
-    /// The unique numeric identifier of this AEAD implementation.
-    ///
-    /// Will be used in the [Floe header] as part of the parameters.
-    ///
-    /// [Floe header]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#floe-ciphertext-layout
-    const AEAD_ID: u8;
-
-    const AEAD_ROTATION_MASK: u64;
-
-    const AEAD_MAX_SEGMENTS: u64;
-}
 
 #[cfg(all(test, feature = "std", feature = "floe-gcm", feature = "getrandom"))]
 mod tests;
