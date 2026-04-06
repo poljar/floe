@@ -26,10 +26,10 @@ macro_rules! test_vector {
             fn [< # test_$file:lower >]() {
                 const SEGMENT_SIZE: u32 = $segment_size;
 
-                let ciphertext = crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_ct.txt", $file));
-                let plaintext = crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_pt.txt", $file));
+                let ciphertext = $crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_ct.txt", $file));
+                let plaintext = $crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_pt.txt", $file));
 
-                crate::tests::helpers::decrypt_test_vector::<SEGMENT_SIZE>(&ciphertext, &plaintext);
+                $crate::tests::helpers::decrypt_test_vector::<SEGMENT_SIZE>(&ciphertext, &plaintext);
             }
         }
     };
@@ -53,15 +53,19 @@ pub(super) fn encrypt_decrypt_single_segment<const S: u32>(plaintext: &[u8]) {
     let output_size = encryptor.output_size(plaintext);
     let mut buffer = vec![0u8; output_size];
 
+    #[allow(clippy::expect_used)]
     encryptor
         .encrypt_segment(plaintext, &mut buffer, 0, true)
         .expect("We should be able to encrypt the segment");
 
+    #[allow(clippy::unwrap_used)]
     let decryptor = FloeDecryptor::<S>::new(&key, &[], encryptor.header()).unwrap();
 
+    #[allow(clippy::expect_used)]
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
     let mut decryption_buffer = vec![0u8; segment.plaintext_size()];
 
+    #[allow(clippy::unwrap_used)]
     decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
 
     assert_eq!(
