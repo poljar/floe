@@ -76,7 +76,7 @@ where
         panic!("Segment size is too large, the length of the segment doesn't fit into a u32");
     } else if TryInto::<usize>::try_into(S).is_err() {
         panic!("Segment size is too large, the length of the segment doesn't fit into a usize");
-    } else if S < ((segment_overhead::<A>() + 1) as u32) {
+    } else if S < ((segment_overhead::<A>()) as u32) {
         panic!(
             "Segment size is too small, the segment doesn't have enough space for the segment header"
         );

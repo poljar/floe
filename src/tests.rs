@@ -29,14 +29,12 @@ fn read_hex_file(file_name: &str) -> Vec<u8> {
     hex::decode(data.trim()).expect("should be able to decode the test vector")
 }
 
-#[test]
-fn test_aes_gcm() {
-    const SEGMENT_SIZE: u32 = 64;
+fn encrypt_decrypt_single_segment<const S: u32>(plaintext: &[u8]) {
+    assert!(plaintext.len() <= S as usize);
 
     let key = FloeKey::from([0u8; 32]);
-    let encryptor = FloeEncryptor::<SEGMENT_SIZE>::new(&key, &[]);
+    let encryptor = FloeEncryptor::<S>::new(&key, &[]);
 
-    let plaintext = b"Hello world";
     let output_size = encryptor.output_size(plaintext);
     let mut buffer = vec![0u8; output_size];
 
@@ -44,17 +42,30 @@ fn test_aes_gcm() {
         .encrypt_segment(plaintext, &mut buffer, 0, true)
         .expect("We should be able to encrypt the segment");
 
-    let decryptor = FloeDecryptor::<SEGMENT_SIZE>::new(&key, &[], encryptor.header()).unwrap();
-    let mut decryption_buffer = vec![0u8; 11];
+    let decryptor = FloeDecryptor::<S>::new(&key, &[], encryptor.header()).unwrap();
 
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
+    let mut decryption_buffer = vec![0u8; segment.plaintext_size()];
+
     decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
 
     assert_eq!(
-        plaintext.as_slice(),
-        decryption_buffer,
+        plaintext, decryption_buffer,
         "The decrypted plaintext should match the original plaintext"
     );
+}
+
+#[test]
+fn test_aes_gcm() {
+    let plaintext = b"Hello world";
+    encrypt_decrypt_single_segment::<64>(plaintext);
+}
+
+#[test]
+fn test_aes_gcm_empty_plaintext() {
+    let plaintext = b"";
+
+    encrypt_decrypt_single_segment::<32>(plaintext);
 }
 
 #[test]
