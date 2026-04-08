@@ -7,31 +7,6 @@ keywords = ["cryptography", "floe", "online-encryption", "random-access"]
 license = "Apache-2.0"
 rust-version = "1.93"
 
-[lints.rust]
-unexpected_cfgs = { level = "deny", check-cfg = ['cfg(fuzzing)'] }
-unsafe_code = "deny"
-unreachable_pub = "deny"
-# missing_docs = "deny"
-dead_code = "deny"
-trivial_casts = "deny"
-trivial_numeric_casts = "deny"
-unsafe_op_in_unsafe_fn = "deny"
-unused_extern_crates = "deny"
-unused_import_braces = "deny"
-unused_qualifications = "deny"
-rust_2018_idioms = "deny"
-
-[lints.clippy]
-panic = "deny"
-unreachable = "deny"
-expect_used = "deny"
-todo = "deny"
-dbg_macro = "deny"
-unwrap_used = "deny"
-mem_forget = "deny"
-std_instead_of_core = "deny"
-std_instead_of_alloc = "deny"
-
 [features]
 default = ["std", "floe-gcm", "getrandom", "zeroize"]
 
@@ -48,13 +23,44 @@ getrandom = { version = "0.4.2", optional = true, features = ["sys_rng"] }
 hmac = "0.13.0"
 hybrid-array = { version = "0.4.10", features = ["zerocopy"] }
 rand_core = "0.10.0"
-subtle = "2.6.1"
 sha2 = { version = "0.11.0", optional = true }
+subtle = "2.6.1"
 thiserror = { version = "2.0.18", default-features = false }
 zerocopy = { version = "0.8.48", features = ["derive"] }
-zeroize = { version = "1.8.2", optional= true, features = ["zeroize_derive"] }
+zeroize = { version = "1.8.2", optional = true, features = ["zeroize_derive"] }
 
 [dev-dependencies]
 anyhow = "1.0.102"
 hex = "0.4.3"
 pastey = "0.2.1"
+
+[lints.rust]
+dead_code = "deny"
+# missing_docs = "deny"
+rust_2018_idioms = "deny"
+trivial_casts = "deny"
+trivial_numeric_casts = "deny"
+unexpected_cfgs = { level = "deny", check-cfg = ['cfg(fuzzing)'] }
+unused_extern_crates = "deny"
+unused_import_braces = "deny"
+unused_qualifications = "deny"
+unreachable_pub = "deny"
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+cast_lossless = "deny"
+# cast_possible_truncation = "deny"
+cast_possible_wrap = "deny"
+cast_sign_loss = "deny"
+dbg_macro = "deny"
+expect_used = "deny"
+mem_forget = "deny"
+# missing_docs_in_private_items = "deny"
+# missing_errors_doc = "deny"
+panic = "deny"
+std_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
+todo = "deny"
+unreachable = "deny"
+unwrap_used = "deny"
