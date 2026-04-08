@@ -13,10 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    Segment,
-    gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header},
-};
+use crate::gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment};
 
 #[macro_export]
 macro_rules! test_vector {

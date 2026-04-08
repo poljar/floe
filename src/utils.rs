@@ -17,7 +17,10 @@ use aead::{AeadCore, Key};
 use digest::KeyInit;
 use zerocopy::IntoBytes;
 
-use crate::{FloeAead, FloeIv, FloeKdf, Parameters, Segment};
+use crate::{
+    FloeAead, FloeKdf,
+    types::{FloeIv, Parameters, Segment},
+};
 
 pub(crate) fn plaintext_size<A, const S: u32>() -> usize
 where

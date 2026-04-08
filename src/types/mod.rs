@@ -13,6 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Data types for the generic Floe implementation.
+
 pub(crate) mod floe_iv;
 pub(crate) mod header;
 pub(crate) mod segment;
+
+pub use floe_iv::FloeIv;
+pub use header::{Header, parameters::Parameters, tag::HeaderTag};
+pub use segment::Segment;

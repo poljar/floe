@@ -25,7 +25,11 @@ use digest::OutputSizeUser;
 use zeroize::Zeroize;
 
 use super::message_key::MessageKey;
-use crate::{FloeAead, FloeIv, FloeKdf, HeaderTag, utils::floe_kdf};
+use crate::{
+    FloeAead, FloeKdf,
+    types::{FloeIv, HeaderTag},
+    utils::floe_kdf,
+};
 
 /// The main input key for a Floe session.
 ///

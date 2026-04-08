@@ -25,21 +25,16 @@
 mod keys;
 mod result;
 mod traits;
-mod types;
 mod utils;
 
 #[cfg(feature = "floe-gcm")]
 pub mod gcm;
 pub mod random_access;
+pub mod types;
 
 pub use crate::{
-    result::{DecryptionError, EncryptionError},
+    result::{DecryptionError, EncryptionError, HeaderDecodeError, SegmentDecodeError},
     traits::{FloeAead, FloeKdf},
-    types::{
-        floe_iv::FloeIv,
-        header::{Header, parameters::Parameters, tag::HeaderTag},
-        segment::Segment,
-    },
 };
 
 #[cfg(all(test, feature = "std", feature = "floe-gcm", feature = "getrandom"))]

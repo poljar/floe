@@ -25,7 +25,11 @@ use zerocopy::IntoBytes;
 use zeroize::Zeroize;
 
 use super::epoch_key::EpochKey;
-use crate::{FloeAead, FloeIv, FloeKdf, Parameters, keys::FloeKdfKey};
+use crate::{
+    FloeAead, FloeKdf,
+    keys::FloeKdfKey,
+    types::{FloeIv, Parameters},
+};
 
 /// The [`MessageKey`] of a Floe session.
 ///

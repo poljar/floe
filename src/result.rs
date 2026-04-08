@@ -15,7 +15,7 @@
 
 use thiserror::Error;
 
-use crate::Parameters;
+use crate::types::Parameters;
 
 #[derive(Debug, Error)]
 pub enum DecryptionError {

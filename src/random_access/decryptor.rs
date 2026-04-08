@@ -21,8 +21,9 @@ use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable};
 
 use crate::{
-    DecryptionError, FloeAead, FloeIv, FloeKdf, Header, Parameters, Segment,
+    DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
+    types::{FloeIv, Header, Parameters, Segment},
     utils::{check_segment_size, plaintext_size},
 };
 

@@ -19,7 +19,9 @@ pub(crate) mod tag;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 use crate::{
-    FloeAead, FloeKdf, HeaderTag, Parameters, result::HeaderDecodeError, types::floe_iv::FloeIv,
+    FloeAead, FloeKdf,
+    result::HeaderDecodeError,
+    types::{FloeIv, HeaderTag, Parameters},
 };
 
 /// The header of a Floe ciphertext.
@@ -65,7 +67,7 @@ impl<const N: usize> Header<N> {
     /// # Examples
     ///
     /// ```no_run
-    /// use floe_rs::Header;
+    /// use floe_rs::types::Header;
     ///
     /// # let bytes: &[u8] = unimplemented!();
     /// let header = Header::<32>::from_bytes(bytes)?;

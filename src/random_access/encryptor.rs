@@ -25,9 +25,9 @@ use rand_core::UnwrapErr;
 use zerocopy::{FromBytes, Immutable, IntoBytes, Unaligned};
 
 use crate::{
-    EncryptionError, FloeAead, FloeKdf, Header,
+    EncryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{floe_iv::FloeIv, segment::SegmentMut},
+    types::{Header, floe_iv::FloeIv, segment::SegmentMut},
     utils::{check_segment_size, plaintext_size},
 };
 

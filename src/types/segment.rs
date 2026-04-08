@@ -64,7 +64,7 @@ where
 /// # Examples
 ///
 /// ```no_run
-/// use floe_rs::Segment;
+/// use floe_rs::types::Segment;
 /// use aes_gcm::Aes256Gcm;
 ///
 /// # let bytes: &[u8] = unimplemented!();
