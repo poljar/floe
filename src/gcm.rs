@@ -48,9 +48,39 @@ pub type FloeEncryptor<'a, const S: u32> =
 pub type FloeDecryptor<'a, const S: u32> =
     crate::random_access::FloeDecryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
 
-pub type Header = crate::types::Header<FLOE_IV_LENGTH>;
-
 pub type FloeKey = Key<Aes256Gcm>;
+
+/// The initialization vector of a Floe-Gcm session.
+///
+/// This variant of the initialization vector is 32 bytes long.
+///
+/// This initialization vector is randomly generated at the start of the
+/// encryption operation.
+pub type FloeIv = crate::types::FloeIv<FLOE_IV_LENGTH>;
+
+/// The header of a Floe GCM ciphertext.
+///
+/// The Floe ciphertext consists of a header and a body. This struct represents
+/// the header which contains:
+/// * parameter information
+/// * the 32-byte Floe initialization vector
+/// * a tag
+///
+/// The header is created before the first segment is encrypted and is required
+/// before any segment can be decrypted.
+///
+/// # Examples
+///
+/// ```no_run
+/// use floe_rs::gcm::Header;
+///
+/// # let bytes: &[u8] = unimplemented!();
+/// let header = Header::from_bytes(bytes)?;
+///
+/// // Now you can create a decryptor to attempt segment decryption.
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub type Header = crate::types::Header<FLOE_IV_LENGTH>;
 
 /// Attempt to decode a slice of bytes as a Floe-Gcm [`Segment`]
 ///
