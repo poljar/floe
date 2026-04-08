@@ -13,7 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::{AeadCore, AeadInOut, Nonce, Tag, array::ArraySize};
+use aead::{
+    AeadCore, AeadInOut, Nonce, Tag,
+    array::{ArraySize, typenum::Unsigned},
+};
 use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U32, Unaligned};
 
 use crate::{EncryptionError, result::SegmentDecodeError};
@@ -33,6 +36,10 @@ pub(crate) const SEGMENT_HEADER_LENGTH: usize = size_of::<u32>();
 /// The segment header for any non-final encrypted segment.
 pub(crate) const NON_FINAL_SEGMENT_HEADER: u32 = u32::MAX;
 
+/// The common inner type for the [Segment] and [SegmentMut] types.
+///
+/// Since those types only differ in their mutability, we can use this type to
+/// parse the common parts of an encrypted segment.
 #[derive(FromBytes, IntoBytes, Immutable, KnownLayout)]
 #[repr(C)]
 struct InnerSegment<A>
@@ -44,6 +51,29 @@ where
     ciphertext: [u8],
 }
 
+/// The encrypted segment of a Floe body.
+///
+/// Floe doesn't encrypt data as a whole, instead it splits out the data into
+/// chunks and produces encrypted segments.
+///
+/// This struct represents one such segment.
+///
+/// This is the generic variant of this type, you might be looking for the
+/// GCM-variant: [`crate::gcm::Segment`].
+///
+/// # Examples
+///
+/// ```no_run
+/// use floe_rs::Segment;
+/// use aes_gcm::Aes256Gcm;
+///
+/// # let bytes: &[u8] = unimplemented!();
+/// let segment = Segment::<Aes256Gcm>::from_bytes(bytes)?;
+/// let buffer = vec![0u8; segment.plaintext_size()];
+///
+/// // Now you can attempt to decrypt the segment.
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub struct Segment<'a, A>
 where
     A: AeadCore,
@@ -58,6 +88,10 @@ impl<'a, A> Segment<'a, A>
 where
     A: AeadCore,
 {
+    /// Attempt to decode a slice of bytes as a Floe [`Segment`]
+    ///
+    /// *Note*: This only attempts to reinterpret the bytes as a valid
+    /// [`Segment`], as such it does not copy any data.
     pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, SegmentDecodeError>
     where
         A: 'a,
@@ -87,22 +121,27 @@ where
         Ok(segment)
     }
 
+    /// Get the header of this encrypted Floe segment.
     pub fn header(&self) -> u32 {
         self.header.get()
     }
 
+    /// Get the AEAD nonce that was used to encrypt this segment.
     pub fn nonce(&self) -> &Nonce<A> {
         self.nonce
     }
 
+    /// Get the AEAD tag which was created when the segment was encrypted.
     pub fn tag(&self) -> &Tag<A> {
         self.tag
     }
 
+    /// Get the ciphertext of this segment.
     pub fn ciphertext(&self) -> &[u8] {
         self.ciphertext
     }
 
+    /// Does this segment claim to be the final one.
     pub fn is_final(&self) -> bool {
         *self.header != NON_FINAL_SEGMENT_HEADER
     }
@@ -110,14 +149,23 @@ where
     /// Calculate how many more bytes an encrypted segment would contain in
     /// addition to the ciphertext bytes itself.
     pub const fn overhead() -> usize {
-        SEGMENT_HEADER_LENGTH + size_of::<Nonce<A>>() + size_of::<Tag<A>>()
+        SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE + A::TagSize::USIZE
     }
 
+    /// Get the size of the plaintext once the segment is decrypted.
+    ///
+    /// This will be the same size as the length of the [`Segment::ciphertext`].
+    ///
+    /// This can be used to allocate a buffer where the plaintext will be put.
     pub const fn plaintext_size(&self) -> usize {
         self.ciphertext.len()
     }
 }
 
+/// The mutable variant of an encrypted segment.
+///
+/// This type is used to interpret the output buffer when a chunk of plaintext
+/// data is encrypted.
 pub(crate) struct SegmentMut<'a, A>
 where
     A: AeadInOut,
@@ -132,10 +180,13 @@ impl<'a, A> SegmentMut<'a, A>
 where
     A: AeadInOut + 'a,
 {
+    /// Get the size the output buffer of this encrypted segment should have.
     pub(crate) const fn output_size(plaintext: &[u8]) -> usize {
         plaintext.len() + Segment::<A>::overhead()
     }
 
+    /// Reinterpret a mutable buffer as a [`SegmentMut`] and copy the plaintext
+    /// into the buffer.
     pub(crate) fn from_buffer_and_plaintext(
         plaintext: &[u8],
         buffer: &'a mut [u8],

@@ -31,7 +31,7 @@ use crate::{
     utils::{check_segment_size, plaintext_size},
 };
 
-/// Exposes the FLOE random-access encryption APIs.
+/// Exposes the Floe random-access encryption APIs.
 ///  
 /// The random-access APIs do not directly protect you against truncation
 /// attacks or prevent you from incorrectly encrypting the same segment multiple
@@ -42,7 +42,7 @@ where
     K: FloeKdf,
 {
     /// The header of the Floe session.
-    header: Header<A, K, N>,
+    header: Header<N>,
     /// The message key, used to derive the AEAD key for the segments.
     message_key: MessageKey<A, K>,
     /// The user-provided additional associated data.
@@ -83,7 +83,7 @@ where
         let header_tag = floe_key.derive_header_tag::<N, S>(&floe_iv, associated_data);
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
 
-        let header = Header::new::<S>(floe_iv, header_tag);
+        let header = Header::new::<A, K, S>(floe_iv, header_tag);
 
         Ok(Self { message_key, header, associated_data })
     }
@@ -107,7 +107,7 @@ where
     ///
     /// The header is usually prepended to the first encrypted segment. It will
     /// be needed to start decrypting segments.
-    pub fn header(&self) -> &Header<A, K, N> {
+    pub fn header(&self) -> &Header<N> {
         &self.header
     }
 

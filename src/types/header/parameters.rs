@@ -17,6 +17,7 @@ use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, Unaligne
 
 use crate::{FloeAead, FloeKdf};
 
+/// Information about the parameters a Floe session is using.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout,
 )]
@@ -25,10 +26,13 @@ pub struct Parameters {
     aead_id: u8,
     kdf_id: u8,
     segment_length: zerocopy::U32<BigEndian>,
-    floe_iv_length: zerocopy::U32<BigEndian>,
+    floe_iv_size: zerocopy::U32<BigEndian>,
 }
 
 impl Parameters {
+    /// The length of the parameter info in the header, in bytes.
+    pub const LENGTH: usize = 10;
+
     /// Create a new set of Floe parameters.
     ///
     /// This is the `PARAM_ENCODE(params) -> bytes` function from the [spec].
@@ -56,7 +60,28 @@ impl Parameters {
             aead_id: A::AEAD_ID,
             kdf_id: K::KDF_ID,
             segment_length: zerocopy::U32::new(S),
-            floe_iv_length,
+            floe_iv_size: floe_iv_length,
         }
+    }
+
+    /// Get the unique ID of the AEAD that is used for this Floe session.
+    pub fn aead_id(&self) -> u8 {
+        self.aead_id
+    }
+
+    /// Get the unique ID of the KDF implementation that is used for this Floe
+    /// session.
+    pub fn kdf_id(&self) -> u8 {
+        self.kdf_id
+    }
+
+    /// Get configured segment length of this Floe session.
+    pub fn segment_length(&self) -> u32 {
+        self.segment_length.get()
+    }
+
+    /// Get the size of the Floe initialization vector of this Floe session.
+    pub fn floe_iv_size(&self) -> u32 {
+        self.floe_iv_size.get()
     }
 }

@@ -55,5 +55,6 @@ zerocopy = { version = "0.8.48", features = ["derive"] }
 zeroize = { version = "1.8.2", optional= true, features = ["zeroize_derive"] }
 
 [dev-dependencies]
+anyhow = "1.0.102"
 hex = "0.4.3"
 pastey = "0.2.1"

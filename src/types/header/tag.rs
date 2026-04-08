@@ -18,9 +18,16 @@ use digest::typenum::Unsigned;
 use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
+#[cfg(doc)]
+use super::Header;
+
 /// The size of the header tag.
 pub(crate) type HeaderTagSize = U32;
 
+/// The tag of a Floe [Header].
+///
+/// This tag is used to commit the key, Floe IV, and additional associated data
+/// provided by the user.
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
 #[repr(transparent)]
 pub struct HeaderTag {
@@ -28,10 +35,10 @@ pub struct HeaderTag {
 }
 
 impl HeaderTag {
-    pub const fn length() -> usize {
-        HeaderTagSize::USIZE
-    }
+    /// The length of the header tag in bytes.
+    pub const LENGTH: usize = HeaderTagSize::USIZE;
 
+    /// Represent the [`HeaderTag`] as an array of bytes.
     pub fn as_array(&self) -> &[u8; HeaderTagSize::USIZE] {
         #[allow(clippy::expect_used)]
         self.inner.as_array().expect("We should be able to convert the Array to a primitive array")

@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Generic implementation of the [semi-public] random-access Floe API.
+//!
+//! [semi-public]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
+
 mod decryptor;
 mod encryptor;
 

@@ -33,11 +33,13 @@ where
 {
     /// The message key, used to derive the AEAD key for the segments.
     message_key: MessageKey<A, K>,
+
     /// The Floe initialization vector.
     ///
     /// This was created when the Floe session was created while the segments
     /// were encrypted.
     floe_iv: FloeIv<N>,
+
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
 }
@@ -58,7 +60,7 @@ where
     pub fn new(
         key: &Key<A>,
         associated_data: &'a [u8],
-        header: &Header<A, K, N>,
+        header: &Header<N>,
     ) -> Result<Self, DecryptionError> {
         check_segment_size::<A, S>();
 

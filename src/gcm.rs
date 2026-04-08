@@ -13,6 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Implementation of Floe using the AES-GCM variant.
+//!
+//! The crate offers a generic Floe implementation. This module specializes it
+//! by providing type aliases for the GCM-based variant.
+
 use aead::{Key, consts::U48};
 use aes_gcm::Aes256Gcm;
 use hmac::Hmac;
@@ -43,6 +48,25 @@ pub type FloeEncryptor<'a, const S: u32> =
 pub type FloeDecryptor<'a, const S: u32> =
     crate::random_access::FloeDecryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
 
-pub type Header = crate::Header<Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH>;
+pub type Header = crate::Header<FLOE_IV_LENGTH>;
 
 pub type FloeKey = Key<Aes256Gcm>;
+
+/// Attempt to decode a slice of bytes as a Floe-Gcm [`Segment`]
+///
+/// *Note*: This only attempts to reinterpret the bytes as a valid
+/// [`Segment`], as such it does not copy any data.
+///
+/// # Examples
+///
+/// ```no_run
+/// use floe_rs::gcm::Segment;
+///
+/// # let bytes: &[u8] = unimplemented!();
+/// let segment = Segment::from_bytes(bytes)?;
+/// let buffer = vec![0u8; segment.plaintext_size()];
+///
+/// // Now you can attempt to decrypt the segment.
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub type Segment<'a> = crate::types::segment::Segment<'a, Aes256Gcm>;

@@ -16,85 +16,82 @@
 pub(crate) mod parameters;
 pub(crate) mod tag;
 
-use core::marker::PhantomData;
-
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
 use crate::{
     FloeAead, FloeKdf, HeaderTag, Parameters, result::HeaderDecodeError, types::floe_iv::FloeIv,
 };
 
+/// The header of a Floe ciphertext.
+///
+/// The Floe ciphertext consists of a header and a body. This struct represents
+/// the header which contains:
+/// * parameter information
+/// * the Floe initialization vector
+/// * a tag
+///
+/// The header is created before the first segment is encrypted and is required
+/// before any segment can be decrypted.
 #[derive(Debug, FromBytes, IntoBytes, Unaligned, Immutable, KnownLayout)]
 #[repr(C)]
-struct InnerHeader<A, K, const N: usize>
-where
-    A: FloeAead,
-    K: FloeKdf,
-{
+pub struct Header<const N: usize> {
     parameters: Parameters,
     floe_iv: FloeIv<N>,
     tag: HeaderTag,
-    aead: PhantomData<A>,
-    kdf: PhantomData<K>,
 }
 
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct Header<A, K, const N: usize>
-where
-    A: FloeAead,
-    K: FloeKdf,
-{
-    inner: InnerHeader<A, K, N>,
-}
+impl<const N: usize> Header<N> {
+    /// The length of the [`Header`] in bytes.
+    ///
+    /// This is the sum of the length of the parameters, the Floe IV, and the
+    /// header tag.
+    pub const LENGTH: usize = N + Parameters::LENGTH + HeaderTag::LENGTH;
 
-impl<A, K, const N: usize> Header<A, K, N>
-where
-    A: FloeAead,
-    K: FloeKdf,
-{
-    pub const fn length() -> usize {
-        size_of::<Header<A, K, N>>()
-    }
-
-    pub(crate) fn new<const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self {
+    /// Create a new [`Header`] with the given [`FloeIv`] and [`HeaderTag`].
+    ///
+    /// The parameters will be generated implicitly from the generic arguments.
+    pub(crate) fn new<A, K, const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self
+    where
+        A: FloeAead,
+        K: FloeKdf,
+    {
         let parameters = Parameters::new::<A, K, N, S>();
 
-        Self {
-            inner: InnerHeader {
-                parameters,
-                floe_iv,
-                tag: header_tag,
-                aead: PhantomData,
-                kdf: PhantomData,
-            },
-        }
+        Self { parameters, floe_iv, tag: header_tag }
     }
 
+    /// Attempt to parse a slice of bytes into a [`Header`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use floe_rs::Header;
+    ///
+    /// # let bytes: &[u8] = unimplemented!();
+    /// let header = Header::<32>::from_bytes(bytes)?;
+    ///
+    /// // Now you can create a decryptor to attempt segment decryption.
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, HeaderDecodeError> {
-        let inner = InnerHeader::read_from_bytes(bytes).map_err(|_| {
-            HeaderDecodeError::InvalidLength { expected: Self::length(), got: bytes.len() }
-        })?;
-
-        Ok(Self { inner })
+        Self::read_from_bytes(bytes).map_err(|_| HeaderDecodeError::InvalidLength {
+            expected: Self::LENGTH,
+            got: bytes.len(),
+        })
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        self.inner.as_bytes()
-    }
-
-    /// Get the encoded parameters of this header.
+    /// Get the parameter information contained in this header.
     pub fn parameters(&self) -> &Parameters {
-        &self.inner.parameters
+        &self.parameters
     }
 
     /// Get the Floe initialization vector contained in this header.
     pub fn iv(&self) -> &FloeIv<N> {
-        &self.inner.floe_iv
+        &self.floe_iv
     }
 
     /// Get the tag of this header.
     pub fn tag(&self) -> &HeaderTag {
-        &self.inner.tag
+        &self.tag
     }
 }
