@@ -7,6 +7,13 @@ keywords = ["cryptography", "floe", "online-encryption", "random-access"]
 license = "Apache-2.0"
 rust-version = "1.93"
 
+exclude = [
+    "test-vectors/*",
+    ".github/*",
+    ".config/*",
+    "justfile",
+]
+
 [features]
 default = ["std", "floe-gcm", "getrandom", "zeroize"]
 
