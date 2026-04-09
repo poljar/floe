@@ -9,12 +9,7 @@ license = "Apache-2.0"
 repository = "https://github.com/poljar/floe"
 rust-version = "1.93"
 
-exclude = [
-    "test-vectors/*",
-    ".github/*",
-    ".config/*",
-    "justfile",
-]
+exclude = ["test-vectors/*", ".github/*", ".config/*", "justfile"]
 
 [features]
 default = ["std", "floe-gcm", "getrandom", "zeroize"]

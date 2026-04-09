@@ -27,6 +27,7 @@ use crate::{
     utils::{check_segment_size, plaintext_size},
 };
 
+/// Generic implementation of the Floe random-access decryption APIs.
 pub struct FloeDecryptor<'a, A, K, const N: usize, const S: u32>
 where
     A: FloeAead,
@@ -90,6 +91,11 @@ where
         }
     }
 
+    /// The length of the plaintext decrypting any non-final segment will
+    /// produce.
+    ///
+    /// The length of the plaintext the final segment will produce can be found
+    /// using the [`Segment::plaintext_size`] method.
     pub fn plaintext_size(&self) -> usize {
         // SAFETY: The constructor of the FloeDecryptor checks that the segment size
         // fits into an usize and that it's bigger than the overhead.

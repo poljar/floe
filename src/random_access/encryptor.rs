@@ -24,6 +24,8 @@ use rand_core::CryptoRng;
 use rand_core::UnwrapErr;
 use zerocopy::{FromBytes, Immutable, IntoBytes, Unaligned};
 
+#[cfg(doc)]
+use crate::types::Segment;
 use crate::{
     EncryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
@@ -31,7 +33,7 @@ use crate::{
     utils::{check_segment_size, plaintext_size},
 };
 
-/// Exposes the Floe random-access encryption APIs.
+/// Generic implementation of the Floe random-access encryption APIs.
 ///  
 /// The random-access APIs do not directly protect you against truncation
 /// attacks or prevent you from incorrectly encrypting the same segment multiple
@@ -43,8 +45,10 @@ where
 {
     /// The header of the Floe session.
     header: Header<N>,
+
     /// The message key, used to derive the AEAD key for the segments.
     message_key: MessageKey<A, K>,
+
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
 }
@@ -63,6 +67,21 @@ where
     <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
     <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
 {
+    /// Create a new [`FloeEncryptor`] with the given key and associated data.
+    ///
+    /// The Floe initialization vector will be randomly generated using the
+    /// [SysRng] for the rng implementation.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if:
+    /// * not enough randomness can be gathered to generate the Floe
+    ///   initialization vector.
+    /// * the configured segment size is too small, it needs to be at least as
+    ///   big as the segment overhead, the size of the overhead is returned by
+    ///   the [Segment::overhead] function
+    /// * the configured segment size is too big, it can be at the max
+    ///   [u32::MAX] minus the segment overhead.
     #[cfg(feature = "getrandom")]
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
         #[allow(clippy::expect_used)]
@@ -70,6 +89,20 @@ where
             .expect("should be able to generate enough randomness for the Floe IV")
     }
 
+    /// Create a new [`FloeEncryptor`] with the given key and associated data.
+    ///
+    /// The rng is required to generate a new random Floe IV.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if:
+    /// * not enough randomness can be gathered to generate the Floe
+    ///   initialization vector.
+    /// * the configured segment size is too small, it needs to be at least as
+    ///   big as the segment overhead, the size of the overhead is returned by
+    ///   the [Segment::overhead] function
+    /// * the configured segment size is too big, it can be at the max
+    ///   [u32::MAX] minus the segment overhead.
     pub fn with_rng<R: CryptoRng>(
         key: &Key<A>,
         associated_data: &'a [u8],
@@ -88,12 +121,30 @@ where
         Ok(Self { message_key, header, associated_data })
     }
 
+    /// Get the input size this [`FloeEncryptor`] expects.
+    ///
+    /// The [`FloeEncryptor`] expects a constant input (plaintext) size for each
+    /// [`FloeEncryptor::encrypt_segment`] call, unless the segment is
+    /// considered to be final.
     pub fn input_size(&self) -> usize {
         // SAFETY: The constructor of the FloeEncryptor checks that the segment size
         // fits into an usize and that it's bigger than the overhead.
         plaintext_size::<A, S>()
     }
 
+    /// Get the output size this [`FloeEncryptor`] expects.
+    ///
+    /// The [`FloeEncryptor`] requires an output buffer to be pre-allocated. For
+    /// non-final segments this will be the same as the configured segment
+    /// size.
+    ///
+    /// For a final segment, this will depend on the length of the final
+    /// plaintext.
+    ///
+    /// # Panics
+    ///
+    /// This funnction panics if the length of the plaintext is bigger than the
+    /// input size, returned by the [`FloeEncryptor::input_size`] method.
     pub fn output_size(&self, plaintext: &[u8]) -> usize {
         assert!(
             plaintext.len() <= self.input_size(),
@@ -111,6 +162,20 @@ where
         &self.header
     }
 
+    /// Encrypt a part of the plaintext using this [`FloeEncryptor`].
+    ///
+    /// # Arguments
+    ///
+    /// * `plaintext` - A chunk of plaintext bytes which should be encrypted
+    /// * `buffer` - The output buffer where the encrypted segment will be
+    ///   copied to.
+    /// * `segment_number` - The current segment number.
+    /// * `is_final` - Is this the final segment?
+    ///
+    /// # Panics
+    ///
+    /// This function panics if not enough randomness can be gathered to
+    /// generate an AEAD nonce to encrypt this segment.
     #[cfg(feature = "getrandom")]
     pub fn encrypt_segment(
         &self,
@@ -123,6 +188,17 @@ where
         self.encrypt_segment_with_rng(plaintext, buffer, segment_number, is_final, &mut rng)
     }
 
+    /// Encrypt a part of the plaintext using this [`FloeEncryptor`].
+    ///
+    /// # Arguments
+    ///
+    /// * `plaintext` - A chunk of plaintext bytes which should be encrypted
+    /// * `buffer` - The output buffer where the encrypted segment will be
+    ///   copied to.
+    /// * `segment_number` - The current segment number.
+    /// * `is_final` - Is this the final segment?
+    /// * `rng` - A [`CryptoRng`] which will be used to generate a new AEAD
+    ///   nonce for this segment.
     pub fn encrypt_segment_with_rng<R>(
         &self,
         plaintext: &[u8],

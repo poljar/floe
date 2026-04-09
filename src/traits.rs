@@ -18,6 +18,10 @@ use core::num::NonZero;
 use aead::{AeadInOut, array::ArraySize};
 use digest::{KeyInit, Mac};
 
+/// Trait for any Floe-compatible KDF implementation.
+///
+/// This is almost a marker trait. The trait does not provide any functions it
+/// only defines constants a Floe-compatible KDF implementation should use.
 pub trait FloeKdf: Mac + KeyInit {
     /// The length of the KDF key.
     ///
@@ -34,6 +38,10 @@ pub trait FloeKdf: Mac + KeyInit {
     const KDF_ID: u8;
 }
 
+/// Trait for any Floe-compatible AEAD implementation.
+///
+/// This is almost a marker trait. The trait does not provide any functions it
+/// only defines constants a Floe-compatible AEAD implementation should use.
 pub trait FloeAead: AeadInOut + KeyInit {
     /// The unique numeric identifier of this AEAD implementation.
     ///
@@ -42,7 +50,13 @@ pub trait FloeAead: AeadInOut + KeyInit {
     /// [Floe header]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#floe-ciphertext-layout
     const AEAD_ID: u8;
 
+    /// A non-negative integer value designating how many segments can be
+    /// encrypted before deriving a new encryption key.
+    ///
+    /// Specifically, 2^AEAD_ROTATION_MASK segments are encrypted under a single
+    /// key.
     const AEAD_ROTATION_MASK: u64;
 
+    /// The maximum number of segments in a Floe ciphertext.
     const AEAD_MAX_SEGMENTS: NonZero<u64>;
 }

@@ -46,12 +46,23 @@ impl FloeAead for Aes256Gcm {
         .expect("should be able to create a non-zero value, as this clearly isn't zero");
 }
 
+/// The GCM implementation of the Floe random-access encryption APIs.
+///  
+/// This is a type alias over the generic implementation with [`Aes256Gcm`] and
+/// [`Hmac<Sha384>`] picked as the AEAD and KDF implementation.
 pub type FloeEncryptor<'a, const S: u32> =
     crate::random_access::FloeEncryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
 
+/// The GCM implementation of the Floe random-access decryption APIs.
+///  
+/// This is a type alias over the generic implementation with [`Aes256Gcm`] and
+/// [`Hmac<Sha384>`] picked as the AEAD and KDF implementation.
 pub type FloeDecryptor<'a, const S: u32> =
     crate::random_access::FloeDecryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
 
+/// The Floe-GCM key.
+///
+/// This is a type alias for the [`Aes256Gcm`] key type.
 pub type FloeKey = Key<Aes256Gcm>;
 
 /// The initialization vector of a Floe-Gcm session.

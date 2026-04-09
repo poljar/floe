@@ -54,7 +54,9 @@ where
 {
     #[allow(clippy::panic)]
     if S > u32::MAX - (Segment::<A>::overhead() as u32) {
-        panic!("Segment size is too large, the length of the segment doesn't fit into a u32");
+        panic!(
+            "Segment size is too large, the length of a potential final segment doesn't fit into a u32"
+        );
     } else if TryInto::<usize>::try_into(S).is_err() {
         panic!("Segment size is too large, the length of the segment doesn't fit into a usize");
     } else if S < ((Segment::<A>::overhead()) as u32) {
