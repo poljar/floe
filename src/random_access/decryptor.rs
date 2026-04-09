@@ -116,16 +116,17 @@ where
                 return Err(DecryptionError::MalformedSegment);
             }
 
-            if segment_number > A::AEAD_MAX_SEGMENTS {
-                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
+            if segment_number > A::AEAD_MAX_SEGMENTS.get() {
+                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
             }
         } else {
             if segment.ciphertext().len() != allowed_ciphertext_length {
                 return Err(DecryptionError::MalformedSegment);
             }
 
-            if segment_number > (A::AEAD_MAX_SEGMENTS - 1) {
-                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
+            // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
+            if segment_number > (A::AEAD_MAX_SEGMENTS.get() - 1) {
+                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
             }
         }
 

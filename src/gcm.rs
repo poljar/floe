@@ -18,6 +18,8 @@
 //! The crate offers a generic Floe implementation. This module specializes it
 //! by providing type aliases for the GCM-based variant.
 
+use core::num::NonZero;
+
 use aead::{Key, consts::U48};
 use aes_gcm::Aes256Gcm;
 use hmac::Hmac;
@@ -39,7 +41,9 @@ impl FloeAead for Aes256Gcm {
     // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
     const AEAD_ID: u8 = 0;
     const AEAD_ROTATION_MASK: u64 = !((1u64 << 20) - 1);
-    const AEAD_MAX_SEGMENTS: u64 = 1 << 40;
+    #[allow(clippy::expect_used)]
+    const AEAD_MAX_SEGMENTS: NonZero<u64> = NonZero::new(1 << 40)
+        .expect("should be able to create a non-zero value, as this clearly isn't zero");
 }
 
 pub type FloeEncryptor<'a, const S: u32> =

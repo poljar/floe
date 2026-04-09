@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use core::num::NonZero;
+
 use aead::{AeadInOut, array::ArraySize};
 use digest::{KeyInit, Mac};
 
@@ -42,5 +44,5 @@ pub trait FloeAead: AeadInOut + KeyInit {
 
     const AEAD_ROTATION_MASK: u64;
 
-    const AEAD_MAX_SEGMENTS: u64;
+    const AEAD_MAX_SEGMENTS: NonZero<u64>;
 }

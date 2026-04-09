@@ -145,8 +145,8 @@ where
                 });
             }
 
-            if segment_number >= A::AEAD_MAX_SEGMENTS {
-                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
+            if segment_number >= A::AEAD_MAX_SEGMENTS.get() {
+                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
             }
         } else {
             if plaintext_length != allowed_plaintext_length {
@@ -156,8 +156,9 @@ where
                 });
             }
 
-            if segment_number >= (A::AEAD_MAX_SEGMENTS - 1) {
-                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS));
+            // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
+            if segment_number >= (A::AEAD_MAX_SEGMENTS.get() - 1) {
+                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
             }
         }
 
