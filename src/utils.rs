@@ -19,10 +19,10 @@ use zerocopy::IntoBytes;
 
 use crate::{
     FloeAead, FloeKdf,
-    types::{FloeIv, Parameters, Segment},
+    types::{FloeIv, Parameters, Segment, SegmentSize},
 };
 
-pub(crate) fn plaintext_size<A, const S: u32>() -> usize
+pub(crate) fn plaintext_size<A, const S: SegmentSize>() -> usize
 where
     A: AeadCore,
 {
@@ -51,7 +51,7 @@ where
 ///
 /// The function also panics if the segment overhead doesn't fit into the
 /// segment, i.e. if the segment size is smaller than the segment overhead.
-pub(crate) fn check_segment_size<A, const S: u32>()
+pub(crate) fn check_segment_size<A, const S: SegmentSize>()
 where
     A: AeadCore,
 {
@@ -68,7 +68,7 @@ where
     }
 }
 
-pub(crate) fn floe_kdf<A, K, const N: usize, const S: u32>(
+pub(crate) fn floe_kdf<A, K, const N: usize, const S: SegmentSize>(
     key: &Key<A>,
     floe_iv: &FloeIv<N>,
     associated_data: &[u8],

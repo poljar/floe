@@ -23,12 +23,12 @@ use zerocopy::{FromBytes, Immutable};
 use crate::{
     DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{FloeIv, Header, Parameters, Segment},
+    types::{FloeIv, Header, Parameters, Segment, SegmentSize},
     utils::{check_segment_size, plaintext_size},
 };
 
 /// Generic implementation of the Floe random-access decryption APIs.
-pub struct FloeDecryptor<'a, A, K, const N: usize, const S: u32>
+pub struct FloeDecryptor<'a, A, K, const N: usize, const S: SegmentSize>
 where
     A: FloeAead,
     K: FloeKdf,
@@ -46,7 +46,7 @@ where
     associated_data: &'a [u8],
 }
 
-impl<'a, A, K, const N: usize, const S: u32> FloeDecryptor<'a, A, K, N, S>
+impl<'a, A, K, const N: usize, const S: SegmentSize> FloeDecryptor<'a, A, K, N, S>
 where
     A: FloeAead,
     K: FloeKdf,

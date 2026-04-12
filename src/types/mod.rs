@@ -22,3 +22,8 @@ pub(crate) mod segment;
 pub use floe_iv::FloeIv;
 pub use header::{Header, parameters::Parameters, tag::HeaderTag};
 pub use segment::Segment;
+
+/// Type alias for the encrypted segment size.
+///
+/// The encrypted segment size is expressed as an [`u32`].
+pub type SegmentSize = u32;

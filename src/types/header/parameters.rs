@@ -15,7 +15,7 @@
 
 use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
-use crate::{FloeAead, FloeKdf};
+use crate::{FloeAead, FloeKdf, types::SegmentSize};
 
 /// Information about the parameters a Floe session is using.
 #[derive(
@@ -43,7 +43,7 @@ impl Parameters {
     /// needs to fit into a `u32`.
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
-    pub(crate) fn new<A, K, const N: usize, const S: u32>() -> Self
+    pub(crate) fn new<A, K, const N: usize, const S: SegmentSize>() -> Self
     where
         A: FloeAead,
         K: FloeKdf,

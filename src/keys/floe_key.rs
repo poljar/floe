@@ -27,7 +27,7 @@ use zeroize::Zeroize;
 use super::message_key::MessageKey;
 use crate::{
     FloeAead, FloeKdf,
-    types::{FloeIv, HeaderTag},
+    types::{FloeIv, HeaderTag, SegmentSize},
     utils::floe_kdf,
 };
 
@@ -66,7 +66,7 @@ where
     /// ```
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
-    pub(crate) fn derive_header_tag<const N: usize, const S: u32>(
+    pub(crate) fn derive_header_tag<const N: usize, const S: SegmentSize>(
         &self,
         floe_iv: &FloeIv<N>,
         associated_data: &[u8],
@@ -96,7 +96,7 @@ where
     /// ```
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
-    pub(crate) fn derive_message_key<const N: usize, const S: u32>(
+    pub(crate) fn derive_message_key<const N: usize, const S: SegmentSize>(
         &self,
         floe_iv: &FloeIv<N>,
         associated_data: &[u8],

@@ -28,7 +28,7 @@ use super::epoch_key::EpochKey;
 use crate::{
     FloeAead, FloeKdf,
     keys::FloeKdfKey,
-    types::{FloeIv, Parameters},
+    types::{FloeIv, Parameters, SegmentSize},
 };
 
 /// The [`MessageKey`] of a Floe session.
@@ -65,7 +65,7 @@ where
     /// ```
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#internal-functions
-    pub(crate) fn derive_epoch_key<const N: usize, const S: u32>(
+    pub(crate) fn derive_epoch_key<const N: usize, const S: SegmentSize>(
         &self,
         floe_iv: &FloeIv<N>,
         associated_data: &[u8],

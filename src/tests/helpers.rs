@@ -13,7 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment};
+use crate::{
+    gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment},
+    types::SegmentSize,
+};
 
 #[macro_export]
 macro_rules! test_vector {
@@ -41,7 +44,7 @@ pub(super) fn read_hex_file(file_name: &str) -> Vec<u8> {
     hex::decode(data.trim()).expect("should be able to decode the test vector")
 }
 
-pub(super) fn encrypt_decrypt_single_segment<const S: u32>(plaintext: &[u8]) {
+pub(super) fn encrypt_decrypt_single_segment<const S: SegmentSize>(plaintext: &[u8]) {
     assert!(plaintext.len() <= S as usize);
 
     let key = FloeKey::from([0u8; 32]);
@@ -71,7 +74,7 @@ pub(super) fn encrypt_decrypt_single_segment<const S: u32>(plaintext: &[u8]) {
     );
 }
 
-pub(super) fn decrypt_test_vector<const S: u32>(ciphertext: &[u8], plaintext: &[u8]) {
+pub(super) fn decrypt_test_vector<const S: SegmentSize>(ciphertext: &[u8], plaintext: &[u8]) {
     const AAD: &[u8] = b"This is AAD";
 
     let header_length = Header::LENGTH;

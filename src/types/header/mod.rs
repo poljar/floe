@@ -21,7 +21,7 @@ use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 use crate::{
     FloeAead, FloeKdf,
     result::HeaderDecodeError,
-    types::{FloeIv, HeaderTag, Parameters},
+    types::{FloeIv, HeaderTag, Parameters, SegmentSize},
 };
 
 /// The header of a Floe ciphertext.
@@ -52,7 +52,7 @@ impl<const N: usize> Header<N> {
     /// Create a new [`Header`] with the given [`FloeIv`] and [`HeaderTag`].
     ///
     /// The parameters will be generated implicitly from the generic arguments.
-    pub(crate) fn new<A, K, const S: u32>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self
+    pub(crate) fn new<A, K, const S: SegmentSize>(floe_iv: FloeIv<N>, header_tag: HeaderTag) -> Self
     where
         A: FloeAead,
         K: FloeKdf,

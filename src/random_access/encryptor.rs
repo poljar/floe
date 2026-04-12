@@ -29,7 +29,7 @@ use crate::types::Segment;
 use crate::{
     EncryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
-    types::{Header, floe_iv::FloeIv, segment::SegmentMut},
+    types::{Header, SegmentSize, floe_iv::FloeIv, segment::SegmentMut},
     utils::{check_segment_size, plaintext_size},
 };
 
@@ -38,7 +38,7 @@ use crate::{
 /// The random-access APIs do not directly protect you against truncation
 /// attacks or prevent you from incorrectly encrypting the same segment multiple
 /// times.
-pub struct FloeEncryptor<'a, A, K, const N: usize, const S: u32>
+pub struct FloeEncryptor<'a, A, K, const N: usize, const S: SegmentSize>
 where
     A: FloeAead,
     K: FloeKdf,
@@ -53,7 +53,7 @@ where
     associated_data: &'a [u8],
 }
 
-impl<'a, A, K, const N: usize, const S: u32> FloeEncryptor<'a, A, K, N, S>
+impl<'a, A, K, const N: usize, const S: SegmentSize> FloeEncryptor<'a, A, K, N, S>
 where
     A: FloeAead,
     K: FloeKdf,
