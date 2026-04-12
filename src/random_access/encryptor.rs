@@ -75,14 +75,8 @@ where
     ///
     /// # Panics
     ///
-    /// This function will panic if:
-    /// * not enough randomness can be gathered to generate the Floe
-    ///   initialization vector.
-    /// * the configured segment size is too small, it needs to be at least as
-    ///   big as the segment overhead, the size of the overhead is returned by
-    ///   the [Segment::overhead] function
-    /// * the configured segment size is too big, it can be at the max
-    ///   [u32::MAX] minus the segment overhead.
+    /// This function will panic if not enough randomness can be gathered to
+    /// generate the Floe initialization vector.
     #[cfg(feature = "getrandom")]
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
         #[allow(clippy::expect_used)]
@@ -93,17 +87,6 @@ where
     /// Create a new [`FloeEncryptor`] with the given key and associated data.
     ///
     /// The rng is required to generate a new random Floe IV.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if:
-    /// * not enough randomness can be gathered to generate the Floe
-    ///   initialization vector.
-    /// * the configured segment size is too small, it needs to be at least as
-    ///   big as the segment overhead, the size of the overhead is returned by
-    ///   the [Segment::overhead] function
-    /// * the configured segment size is too big, it can be at the max
-    ///   [u32::MAX] minus the segment overhead.
     pub fn with_rng<R: CryptoRng>(
         key: &Key<A>,
         associated_data: &'a [u8],
