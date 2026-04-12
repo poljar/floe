@@ -186,9 +186,8 @@ where
         // If it's the final segment, we're putting the length of the segment into the
         // header, otherwise a static placeholder header is used.
         if is_final {
-            // SAFETY: While this can overflow if the user has picked an invalid segment
-            // size that, the `FloeEncryptor` constructor checks if the user has
-            // picked a reasonable segment size.
+            // SAFETY: The FloeEncryptor::encrypt_segment method checks if the plaintext
+            // length is too big and that the segment length fits into an usize.
             #[allow(clippy::expect_used)]
             let final_segment_length =
                 plaintext_buffer_length.checked_add(Segment::<A>::overhead()).expect(
@@ -196,8 +195,8 @@ where
                     to the length of the final segment shouldn't overflow",
                 );
 
-            // SAFETY: The constructor panics also if we can't encode the final segment
-            // length into a `u32`.
+            // SAFETY: The FloeEncryptor constructor panics if we can't encode the maximal
+            // final segment length into a `u32`.
             #[allow(clippy::expect_used)]
             let final_segment_length: u32 = final_segment_length
                 .try_into()

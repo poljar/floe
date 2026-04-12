@@ -35,8 +35,6 @@ where
 /// Check the user-provided encrypted segment size has left enough space for the
 /// segment header an encrypted segment requires.
 ///
-/// # Panics
-///
 /// The size of an encrypted segment is limited by the fact that the length of
 /// the final segment needs to put into the segment header. The length of the
 /// final segment is converted into a `u32` and encoded into 4 bytes as a
@@ -45,23 +43,27 @@ where
 /// This limits the size of the plaintext segment into `u32::MAX -
 /// segment_overhead()`.
 ///
-/// The function will panic if the segment size (S) is bigger than this limit.
-/// Realistically, nobody will pick [`u32::MAX`] bytes for the segment size.
-/// This would be a 4GiB segment size.
+/// # Panics
+///
+/// The function will panic if the segment size (S) doesn't fit into a usize,
+/// i.e. if this is used on a architecture where [usize] is [u16] and a segment
+/// size bigger than [u16::MAX] is picked.
+///
+/// The function also panics if the segment overhead doesn't fit into the
+/// segment, i.e. if the segment size is smaller than the segment overhead.
 pub(crate) fn check_segment_size<A, const S: u32>()
 where
     A: AeadCore,
 {
+    // TODO: Convert this into a fallible function. While it's unlikely people might
+    // read the Floe parameters from an untrusted source and blindly configuring
+    // a encryptor might lead to unwanted panics.
     #[allow(clippy::panic)]
-    if S > u32::MAX - (Segment::<A>::overhead() as u32) {
-        panic!(
-            "Segment size is too large, the length of a potential final segment doesn't fit into a u32"
-        );
-    } else if TryInto::<usize>::try_into(S).is_err() {
-        panic!("Segment size is too large, the length of the segment doesn't fit into a usize");
+    if TryInto::<usize>::try_into(S).is_err() {
+        panic!("The segment size is too large, the length of the segment doesn't fit into a usize");
     } else if S < ((Segment::<A>::overhead()) as u32) {
         panic!(
-            "Segment size is too small, the segment doesn't have enough space for the segment header"
+            "The segment size is too small, the segment doesn't have enough space for the segment header"
         );
     }
 }
