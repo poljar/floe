@@ -23,6 +23,7 @@ use zerocopy::{FromBytes, Immutable};
 use crate::{
     DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
+    result::ConfigurationError,
     types::{FloeIv, Header, Parameters, Segment, SegmentSize},
     utils::{check_segment_size, plaintext_size},
 };
@@ -64,7 +65,7 @@ where
         associated_data: &'a [u8],
         header: &Header<N>,
     ) -> Result<Self, DecryptionError> {
-        check_segment_size::<A, S>();
+        check_segment_size::<A, S>()?;
 
         let expected_parameters = Parameters::new::<A, K, N, S>();
 
@@ -123,7 +124,9 @@ where
             }
 
             if segment_number > A::AEAD_MAX_SEGMENTS.get() {
-                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
+                return Err(
+                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
+                );
             }
         } else {
             if segment.ciphertext().len() != allowed_ciphertext_length {
@@ -132,15 +135,18 @@ where
 
             // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
             if segment_number > (A::AEAD_MAX_SEGMENTS.get() - 1) {
-                return Err(DecryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
+                return Err(
+                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
+                );
             }
         }
 
         if ciphertext_length != buffer_length {
-            return Err(DecryptionError::InvalidBuffer {
+            return Err(ConfigurationError::InvalidBuffer {
                 got: buffer_length,
                 expected: ciphertext_length,
-            });
+            }
+            .into());
         }
 
         let epoch_key = self.message_key.derive_epoch_key::<N, S>(

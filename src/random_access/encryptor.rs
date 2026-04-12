@@ -29,6 +29,7 @@ use crate::types::Segment;
 use crate::{
     EncryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
+    result::ConfigurationError,
     types::{Header, SegmentSize, floe_iv::FloeIv, segment::SegmentMut},
     utils::{check_segment_size, plaintext_size},
 };
@@ -107,11 +108,11 @@ where
         key: &Key<A>,
         associated_data: &'a [u8],
         rng: &mut R,
-    ) -> Result<Self, R::Error> {
-        check_segment_size::<A, S>();
+    ) -> Result<Self, EncryptionError> {
+        check_segment_size::<A, S>()?;
 
         let floe_key = FloeKey::new(key);
-        let floe_iv = FloeIv::generate(rng)?;
+        let floe_iv = FloeIv::generate(rng).map_err(|_| EncryptionError::FloeIvGenerationFailed)?;
 
         let header_tag = floe_key.derive_header_tag::<N, S>(&floe_iv, associated_data);
         let message_key = floe_key.derive_message_key::<N, S>(&floe_iv, associated_data);
@@ -222,7 +223,9 @@ where
             }
 
             if segment_number >= A::AEAD_MAX_SEGMENTS.get() {
-                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
+                return Err(
+                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
+                );
             }
         } else {
             if plaintext_length != allowed_plaintext_length {
@@ -234,7 +237,9 @@ where
 
             // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
             if segment_number >= (A::AEAD_MAX_SEGMENTS.get() - 1) {
-                return Err(EncryptionError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()));
+                return Err(
+                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
+                );
             }
         }
 

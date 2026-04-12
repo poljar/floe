@@ -19,6 +19,7 @@ use zerocopy::IntoBytes;
 
 use crate::{
     FloeAead, FloeKdf,
+    result::ConfigurationError,
     types::{FloeIv, Parameters, Segment, SegmentSize},
 };
 
@@ -51,20 +52,18 @@ where
 ///
 /// The function also panics if the segment overhead doesn't fit into the
 /// segment, i.e. if the segment size is smaller than the segment overhead.
-pub(crate) fn check_segment_size<A, const S: SegmentSize>()
+pub(crate) fn check_segment_size<A, const S: SegmentSize>() -> Result<(), ConfigurationError>
 where
     A: AeadCore,
 {
-    // TODO: Convert this into a fallible function. While it's unlikely people might
-    // read the Floe parameters from an untrusted source and blindly configuring
-    // a encryptor might lead to unwanted panics.
-    #[allow(clippy::panic)]
-    if TryInto::<usize>::try_into(S).is_err() {
-        panic!("The segment size is too large, the length of the segment doesn't fit into a usize");
-    } else if S < ((Segment::<A>::overhead()) as u32) {
-        panic!(
-            "The segment size is too small, the segment doesn't have enough space for the segment header"
-        );
+    TryInto::<usize>::try_into(S).map_err(|_| ConfigurationError::TooBigSegmentSize)?;
+
+    let overhead = Segment::<A>::overhead() as SegmentSize;
+
+    if S < (overhead) {
+        Err(ConfigurationError::TooSmallSegmentSize { minimal: overhead, got: S })
+    } else {
+        Ok(())
     }
 }
 

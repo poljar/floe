@@ -15,20 +15,10 @@
 
 use thiserror::Error;
 
-use crate::types::Parameters;
+use crate::types::{Parameters, SegmentSize};
 
-/// Error type for Floe decryption operations.
 #[derive(Debug, Error)]
-pub enum DecryptionError {
-    /// The ciphertext couldn't be decrypted, most likely because the AEAD tag
-    /// is invalid.
-    #[error("the ciphertext couldn't be decrypted")]
-    Aead(#[from] aead::Error),
-
-    /// The header failed to be verified, the header tag is invalid.
-    #[error("the Floe header contains an invalid tag")]
-    InvalidHeaderTag,
-
+pub enum ConfigurationError {
     /// The given output buffer was either too big or too small.
     #[error("the output buffer has an incorrect length, expected: {expected}, got {got}")]
     InvalidBuffer {
@@ -42,6 +32,40 @@ pub enum DecryptionError {
     /// session.
     #[error("we have reached the maximal number of segments the configured AEAD supports ({0})")]
     MaxSegmentsReached(u64),
+
+    /// The configured segment size is too small.
+    ///
+    /// The segment size needs have at least enough place for the segment
+    /// header, AEAD nonce and AEAD tag.
+    #[error(
+        "the given segment size is too small, the minimal segment size is {minimal}, got {got}"
+    )]
+    TooSmallSegmentSize {
+        /// The lowest value the segment size could be.
+        minimal: SegmentSize,
+        /// The segment size that was configured,
+        got: SegmentSize,
+    },
+
+    #[error("the given segment size does not fit into an usize")]
+    TooBigSegmentSize,
+}
+
+/// Error type for Floe decryption operations.
+#[derive(Debug, Error)]
+pub enum DecryptionError {
+    /// The ciphertext couldn't be decrypted, most likely because the AEAD tag
+    /// is invalid.
+    #[error("the ciphertext couldn't be decrypted")]
+    Aead(#[from] aead::Error),
+
+    /// The header failed to be verified, the header tag is invalid.
+    #[error("the Floe header contains an invalid tag")]
+    InvalidHeaderTag,
+
+    /// There was an issue with the configuration of the Floe decryptor.
+    #[error(transparent)]
+    ConfigurationError(#[from] ConfigurationError),
 
     /// The encrypted segment is malformed and couldn't be decrypted.
     ///
@@ -72,19 +96,9 @@ pub enum EncryptionError {
     #[error("the ciphertext couldn't be encrypted")]
     Aead(#[from] aead::Error),
 
-    /// The maximum number of segments was reached for this Floe encryption
-    /// session.
-    #[error("we have reached the maximal number of segments the configured AEAD supports ({0})")]
-    MaxSegmentsReached(u64),
-
-    /// The given output buffer was either too big or too small.
-    #[error("the output buffer has an incorrect length, expected: {expected}, got {got}")]
-    InvalidBuffer {
-        /// The expected output buffer size.
-        expected: usize,
-        /// The size of the buffer which was given to the encrypt method.
-        got: usize,
-    },
+    /// There was an issue with the configuration of the Floe encryptor.
+    #[error(transparent)]
+    ConfigurationError(#[from] ConfigurationError),
 
     /// The given plaintext has an incorrect length.
     #[error("the plaintext has an incorrect length, expected: {expected}, got {got}")]
@@ -94,6 +108,10 @@ pub enum EncryptionError {
         /// The plaintext length the encrypt method received.
         got: usize,
     },
+
+    /// Creating a Floe IV failed.
+    #[error("the random Floe IV couldn't be generated")]
+    FloeIvGenerationFailed,
 
     /// Encryption failed because a new random nonce for the segment couldn't be
     /// generated.

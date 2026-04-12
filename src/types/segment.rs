@@ -19,7 +19,10 @@ use aead::{
 };
 use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U32, Unaligned};
 
-use crate::{EncryptionError, result::SegmentDecodeError};
+use crate::{
+    EncryptionError,
+    result::{ConfigurationError, SegmentDecodeError},
+};
 
 /// The length of the segment header.
 ///
@@ -197,7 +200,7 @@ where
             FromBytes + IntoBytes + Unaligned + Immutable,
     {
         let buffer_length = buffer.len();
-        let invalid_length_err = || EncryptionError::InvalidBuffer {
+        let invalid_length_err = || ConfigurationError::InvalidBuffer {
             expected: Self::output_size(plaintext),
             got: buffer_length,
         };
