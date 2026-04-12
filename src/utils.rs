@@ -58,6 +58,9 @@ where
 {
     TryInto::<usize>::try_into(S).map_err(|_| ConfigurationError::TooBigSegmentSize)?;
 
+    // SAFETY: This cast will always be fine, the overhead by definition needs
+    // to fit into an `u32` which is used for the segment size.
+    #[allow(clippy::cast_possible_truncation)]
     let overhead = Segment::<A>::overhead() as SegmentSize;
 
     if S < (overhead) {
