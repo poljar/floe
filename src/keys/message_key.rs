@@ -28,7 +28,7 @@ use super::epoch_key::EpochKey;
 use crate::{
     FloeAead, FloeKdf,
     keys::FloeKdfKey,
-    types::{FloeIv, Parameters, SegmentSize},
+    types::{AeadRotationMask, FloeIv, Parameters, SegmentSize},
 };
 
 /// The [`MessageKey`] of a Floe session.
@@ -70,6 +70,7 @@ where
         floe_iv: &FloeIv<N>,
         associated_data: &[u8],
         segment_number: u64,
+        rotation_mask: AeadRotationMask,
         is_final: bool,
     ) -> EpochKey<A>
     where
@@ -78,7 +79,7 @@ where
     {
         // The rotation mask decides how many segments will be encrypted using the same
         // epoch key.
-        let masked_counter = segment_number & A::AEAD_ROTATION_MASK;
+        let masked_counter = segment_number & rotation_mask;
 
         // The purpose will include the segment number, this binds the key to this
         // specific segment.

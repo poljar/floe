@@ -30,7 +30,7 @@ use crate::{
     EncryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
     result::ConfigurationError,
-    types::{Header, SegmentSize, floe_iv::FloeIv, segment::SegmentMut},
+    types::{AeadRotationMask, Header, SegmentSize, floe_iv::FloeIv, segment::SegmentMut},
     utils::{check_segment_size, plaintext_size},
 };
 
@@ -52,6 +52,8 @@ where
 
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
+
+    rotation_mask: AeadRotationMask,
 }
 
 impl<'a, A, K, const N: usize, const S: SegmentSize> FloeEncryptor<'a, A, K, N, S>
@@ -92,6 +94,15 @@ where
         associated_data: &'a [u8],
         rng: &mut R,
     ) -> Result<Self, EncryptionError> {
+        Self::with_rotation_mask(key, associated_data, rng, A::AEAD_ROTATION_MASK)
+    }
+
+    pub fn with_rotation_mask<R: CryptoRng>(
+        key: &Key<A>,
+        associated_data: &'a [u8],
+        rng: &mut R,
+        rotation_mask: AeadRotationMask,
+    ) -> Result<Self, EncryptionError> {
         check_segment_size::<A, S>()?;
 
         let floe_key = FloeKey::new(key);
@@ -102,7 +113,7 @@ where
 
         let header = Header::new::<A, K, S>(floe_iv, header_tag);
 
-        Ok(Self { message_key, header, associated_data })
+        Ok(Self { message_key, header, associated_data, rotation_mask })
     }
 
     /// Get the input size this [`FloeEncryptor`] expects.
@@ -235,6 +246,7 @@ where
             self.header.iv(),
             self.associated_data,
             segment_number,
+            self.rotation_mask,
             is_final,
         );
 

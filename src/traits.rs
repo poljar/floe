@@ -18,6 +18,8 @@ use core::num::NonZero;
 use aead::{AeadInOut, array::ArraySize};
 use digest::{KeyInit, Mac};
 
+use crate::types::AeadRotationMask;
+
 /// Trait for any Floe-compatible KDF implementation.
 ///
 /// This is almost a marker trait. The trait does not provide any functions it
@@ -55,7 +57,7 @@ pub trait FloeAead: AeadInOut + KeyInit {
     ///
     /// Specifically, 2^AEAD_ROTATION_MASK segments are encrypted under a single
     /// key.
-    const AEAD_ROTATION_MASK: u64;
+    const AEAD_ROTATION_MASK: AeadRotationMask;
 
     /// The maximum number of segments in a Floe ciphertext.
     const AEAD_MAX_SEGMENTS: NonZero<u64>;

@@ -27,3 +27,5 @@ pub use segment::Segment;
 ///
 /// The encrypted segment size is expressed as an [`u32`].
 pub type SegmentSize = u32;
+
+pub type AeadRotationMask = u64;

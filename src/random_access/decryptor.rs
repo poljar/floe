@@ -24,7 +24,7 @@ use crate::{
     DecryptionError, FloeAead, FloeKdf,
     keys::{FloeKey, MessageKey},
     result::ConfigurationError,
-    types::{FloeIv, Header, Parameters, Segment, SegmentSize},
+    types::{AeadRotationMask, FloeIv, Header, Parameters, Segment, SegmentSize},
     utils::{check_segment_size, plaintext_size},
 };
 
@@ -45,6 +45,8 @@ where
 
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
+
+    rotation_mask: AeadRotationMask,
 }
 
 impl<'a, A, K, const N: usize, const S: SegmentSize> FloeDecryptor<'a, A, K, N, S>
@@ -64,6 +66,15 @@ where
         key: &Key<A>,
         associated_data: &'a [u8],
         header: &Header<N>,
+    ) -> Result<Self, DecryptionError> {
+        Self::with_rotation_mask(key, associated_data, header, A::AEAD_ROTATION_MASK)
+    }
+
+    pub fn with_rotation_mask(
+        key: &Key<A>,
+        associated_data: &'a [u8],
+        header: &Header<N>,
+        rotation_mask: AeadRotationMask,
     ) -> Result<Self, DecryptionError> {
         check_segment_size::<A, S>()?;
 
@@ -88,7 +99,7 @@ where
             let message_key = floe_key.derive_message_key::<N, S>(header.iv(), associated_data);
             let floe_iv = *header.iv();
 
-            Ok(Self { message_key, floe_iv, associated_data })
+            Ok(Self { message_key, floe_iv, associated_data, rotation_mask })
         }
     }
 
@@ -153,6 +164,7 @@ where
             &self.floe_iv,
             self.associated_data,
             segment_number,
+            self.rotation_mask,
             is_final,
         );
 
