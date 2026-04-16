@@ -35,29 +35,32 @@ fn test_invalid_key_length() {
     key.expect_err("We should not be able to create a floe KDF key with an invalid size");
 }
 
+const CUSTOM_ROTATION_MASK: u64 = u64::from_be_bytes((-4i64).to_be_bytes());
+
 test_vector!("rust_GCM256_IV256_64", 64);
 test_vector!("rust_GCM256_IV256_4K", 4096);
 test_vector!("rust_GCM256_IV256_1M", 1024 * 1024);
+test_vector!("rust_rotation", 40, CUSTOM_ROTATION_MASK);
 
 test_vector!("go_GCM256_IV256_64", 64);
 test_vector!("go_GCM256_IV256_4K", 4096);
 test_vector!("go_GCM256_IV256_1M", 1024 * 1024);
+test_vector!("go_rotation", 40, CUSTOM_ROTATION_MASK);
 
 test_vector!("cpp_GCM256_IV256_64", 64);
 test_vector!("cpp_GCM256_IV256_4K", 4096);
 test_vector!("cpp_GCM256_IV256_1M", 1024 * 1024);
-
-test_vector!("java_GCM256_IV256_64", 64);
-test_vector!("java_GCM256_IV256_4K", 4096);
-test_vector!("java_GCM256_IV256_1M", 1024 * 1024);
+test_vector!("cpp_rotation", 40, CUSTOM_ROTATION_MASK);
 
 test_vector!("pub_java_GCM256_IV256_64", 64);
 test_vector!("pub_java_GCM256_IV256_4K", 4096);
 test_vector!("pub_java_GCM256_IV256_1M", 1024 * 1024);
+test_vector!("pub_java_rotation", 40, CUSTOM_ROTATION_MASK);
+
+test_vector!("java_GCM256_IV256_64", 64);
+test_vector!("java_GCM256_IV256_4K", 4096);
+test_vector!("java_GCM256_IV256_1M", 1024 * 1024);
+test_vector!("java_rotation", 40, CUSTOM_ROTATION_MASK);
+
 test_vector!("java_lastSegAligned", 40);
 test_vector!("java_lastSegEmpty", 40);
-
-// TODO: We need to be able to specify a custom AEAD_ROTATION_MASK for the test
-// vectors with a rotation suffix.
-//
-// create_test!("rust_rotation", 1024 * 1024);

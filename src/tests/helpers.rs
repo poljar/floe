@@ -15,12 +15,12 @@
 
 use crate::{
     gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment},
-    types::SegmentSize,
+    types::{AeadRotationMask, SegmentSize},
 };
 
 #[macro_export]
-macro_rules! test_vector {
-    ($file:literal, $segment_size:expr) => {
+macro_rules! _test_vector {
+    ($file:literal, $segment_size:expr, $rotation_mask:expr) => {
         pastey::paste! {
             #[test]
             fn [< # test_$file:lower >]() {
@@ -29,9 +29,21 @@ macro_rules! test_vector {
                 let ciphertext = $crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_ct.txt", $file));
                 let plaintext = $crate::tests::helpers::read_hex_file(&format!("test-vectors/{}_pt.txt", $file));
 
-                $crate::tests::helpers::decrypt_test_vector::<SEGMENT_SIZE>(&ciphertext, &plaintext);
+                $crate::tests::helpers::decrypt_test_vector::<SEGMENT_SIZE>(&ciphertext, &plaintext, $rotation_mask);
             }
         }
+
+    };
+}
+
+#[macro_export]
+macro_rules! test_vector {
+    ($file:literal, $segment_size:expr, $rotation_mask:expr) => {
+        $crate::_test_vector!($file, $segment_size, Some($rotation_mask));
+    };
+
+    ($file:literal, $segment_size:expr) => {
+        $crate::_test_vector!($file, $segment_size, None);
     };
 }
 
@@ -74,7 +86,11 @@ pub(super) fn encrypt_decrypt_single_segment<const S: SegmentSize>(plaintext: &[
     );
 }
 
-pub(super) fn decrypt_test_vector<const S: SegmentSize>(ciphertext: &[u8], plaintext: &[u8]) {
+pub(super) fn decrypt_test_vector<const S: SegmentSize>(
+    ciphertext: &[u8],
+    plaintext: &[u8],
+    rotation_mask: Option<AeadRotationMask>,
+) {
     const AAD: &[u8] = b"This is AAD";
 
     let header_length = Header::LENGTH;
@@ -86,7 +102,11 @@ pub(super) fn decrypt_test_vector<const S: SegmentSize>(ciphertext: &[u8], plain
     #[allow(clippy::expect_used)]
     let key = FloeKey::try_from([0u8; 32].as_slice()).expect("should be able to create a zero key");
     #[allow(clippy::unwrap_used)]
-    let decryptor = FloeDecryptor::<S>::new(&key, AAD, &header).unwrap();
+    let decryptor = if let Some(rotation_mask) = rotation_mask {
+        FloeDecryptor::<S>::with_rotation_mask(&key, AAD, &header, rotation_mask).unwrap()
+    } else {
+        FloeDecryptor::<S>::new(&key, AAD, &header).unwrap()
+    };
 
     let mut decrypted: Vec<u8> = vec![];
     let mut plaintext_segment = vec![0u8; decryptor.plaintext_size()];
