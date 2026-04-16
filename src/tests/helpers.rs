@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use crate::{
     gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment},
     types::{AeadRotationMask, SegmentSize},
@@ -49,10 +51,7 @@ macro_rules! test_vector {
 
 /// Helper to read and decode a test vector.
 pub(super) fn read_hex_file(file_name: &str) -> Vec<u8> {
-    #[allow(clippy::expect_used)]
     let data = std::fs::read_to_string(file_name).expect("should be able to read the test vector");
-
-    #[allow(clippy::expect_used)]
     hex::decode(data.trim()).expect("should be able to decode the test vector")
 }
 
@@ -65,19 +64,15 @@ pub(super) fn encrypt_decrypt_single_segment<const S: SegmentSize>(plaintext: &[
     let output_size = encryptor.output_size(plaintext);
     let mut buffer = vec![0u8; output_size];
 
-    #[allow(clippy::expect_used)]
     encryptor
         .encrypt_segment(plaintext, &mut buffer, 0, true)
         .expect("We should be able to encrypt the segment");
 
-    #[allow(clippy::unwrap_used)]
     let decryptor = FloeDecryptor::<S>::new(&key, &[], encryptor.header()).unwrap();
 
-    #[allow(clippy::expect_used)]
     let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
     let mut decryption_buffer = vec![0u8; segment.plaintext_size()];
 
-    #[allow(clippy::unwrap_used)]
     decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
 
     assert_eq!(
@@ -96,12 +91,9 @@ pub(super) fn decrypt_test_vector<const S: SegmentSize>(
     let header_length = Header::LENGTH;
     let header_bytes = &ciphertext[..header_length];
 
-    #[allow(clippy::expect_used)]
     let header = Header::from_bytes(header_bytes).expect("should be able to decode the header");
 
-    #[allow(clippy::expect_used)]
     let key = FloeKey::try_from([0u8; 32].as_slice()).expect("should be able to create a zero key");
-    #[allow(clippy::unwrap_used)]
     let decryptor = if let Some(rotation_mask) = rotation_mask {
         FloeDecryptor::<S>::with_rotation_mask(&key, AAD, &header, rotation_mask).unwrap()
     } else {
@@ -116,14 +108,12 @@ pub(super) fn decrypt_test_vector<const S: SegmentSize>(
     for (segment_number, segment) in segments.enumerate() {
         let is_final = segment_number == num_segments - 1;
 
-        #[allow(clippy::expect_used)]
         let segment = Segment::from_bytes(segment).expect("We should be able to parse the segment");
 
         assert_eq!(is_final, segment.is_final());
 
         let buffer = &mut plaintext_segment[..segment.plaintext_size()];
 
-        #[allow(clippy::expect_used)]
         decryptor
             .decrypt_segment(&segment, buffer, segment_number as u64, is_final)
             .expect("should be able to decrypt the segment");
