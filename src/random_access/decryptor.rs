@@ -46,6 +46,9 @@ where
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
 
+    /// The AEAD rotation mask this encryptor will be using.
+    ///
+    /// Defaults to [`FloeAead::AEAD_ROTATION_MASK`].
     rotation_mask: AeadRotationMask,
 }
 

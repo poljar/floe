@@ -20,7 +20,7 @@
 
 // TODO: Add methods where the user doesn't need to allocate buffers manually.
 
-// TODO: Allow the AEAD_ROTATION_MASK to be overridden.
+// TODO: Add a higher level interface which uses std::io::Read
 
 mod keys;
 mod result;

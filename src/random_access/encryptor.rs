@@ -53,6 +53,9 @@ where
     /// The user-provided additional associated data.
     associated_data: &'a [u8],
 
+    /// The AEAD rotation mask this encryptor will be using.
+    ///
+    /// Defaults to [`FloeAead::AEAD_ROTATION_MASK`].
     rotation_mask: AeadRotationMask,
 }
 
@@ -75,10 +78,43 @@ where
     /// The Floe initialization vector will be randomly generated using the
     /// [SysRng] for the rng implementation.
     ///
+    /// # Arguments
+    ///
+    /// * `key` - The main Floe key, used to derive the per-segment keys to
+    ///   encrypt segments.
+    /// * `associated_data` - Any additional associated data, can be used to
+    ///   bind this [`FloeEncryptor`] to a specific protocol.
+    ///
     /// # Panics
     ///
     /// This function will panic if not enough randomness can be gathered to
     /// generate the Floe initialization vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use floe_rs::random_access::FloeEncryptor;
+    ///
+    /// use aead::{Key, consts::U32};
+    /// use aes_gcm::Aes256Gcm;
+    /// use hmac::Hmac;
+    /// use sha2::Sha384;
+    ///
+    /// type Encryptor<'a> = FloeEncryptor<'a, Aes256Gcm, Hmac<Sha384>, 32, 1024>;
+    ///
+    /// let key = [0u8; 32];
+    /// let key = (&key).into();
+    ///
+    /// let encryptor = Encryptor::new(key, b"my_custom_protocol");
+    ///
+    /// let plaintext = b"";
+    ///
+    /// let output_size = encryptor.output_size(plaintext);
+    /// let mut buffer = vec![0u8; output_size];
+    ///
+    /// encryptor.encrypt_segment(plaintext, &mut buffer, 0, true)?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     #[cfg(feature = "getrandom")]
     pub fn new(key: &Key<A>, associated_data: &'a [u8]) -> Self {
         #[allow(clippy::expect_used)]
@@ -86,9 +122,19 @@ where
             .expect("should be able to generate enough randomness for the Floe IV")
     }
 
-    /// Create a new [`FloeEncryptor`] with the given key and associated data.
+    /// Create a new [`FloeEncryptor`] with the given key and associated data
+    /// using the provided random number generator.
     ///
     /// The rng is required to generate a new random Floe IV.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The main Floe key, used to derive the per-segment keys to
+    ///   encrypt segments.
+    /// * `associated_data` - Any additional associated data, can be used to
+    ///   bind this [`FloeEncryptor`] to a specific protocol.
+    /// * `rng` - A random number generator which implements the [`CryptoRng`]
+    ///   trait.
     pub fn with_rng<R: CryptoRng>(
         key: &Key<A>,
         associated_data: &'a [u8],
@@ -97,6 +143,22 @@ where
         Self::with_rotation_mask(key, associated_data, rng, A::AEAD_ROTATION_MASK)
     }
 
+    /// Create a new [`FloeEncryptor`] with the given key and associated data
+    /// using a custom AEAD rotation mask.
+    ///
+    /// The rng is required to generate a new random Floe IV.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The main Floe key, used to derive the per-segment keys to
+    ///   encrypt segments.
+    /// * `associated_data` - Any additional associated data, can be used to
+    ///   bind this [`FloeEncryptor`] to a specific protocol.
+    /// * `rng` - A random number generator which implements the [`CryptoRng`]
+    ///   trait.
+    /// * `rotation_mask` - A value designating how many segments will be
+    ///   encrypted before deriving a new encryption key. `2^rotation_mask`
+    ///   segments are encrypted under a single key.
     pub fn with_rotation_mask<R: CryptoRng>(
         key: &Key<A>,
         associated_data: &'a [u8],
