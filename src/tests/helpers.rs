@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(clippy::expect_used, clippy::unwrap_used, reason = "These are helpers for the tests")]
 
 use crate::{
     gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment},

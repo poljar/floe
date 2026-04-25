@@ -13,10 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::ops::Sub;
-
-use aead::{AeadCore, Key, KeySizeUser, array::ArraySize, consts::U32};
-use digest::OutputSizeUser;
+use aead::{AeadCore, Key, array::ArraySize};
 use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable};
 
@@ -58,12 +55,6 @@ where
     K: FloeKdf,
     <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
     <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
-    <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-    <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
-    <K as OutputSizeUser>::OutputSize: Sub<U32>,
-    <<K as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
-    <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
-    <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
 {
     pub fn new(
         key: &Key<A>,
@@ -92,7 +83,6 @@ where
 
         let floe_key = FloeKey::new(key);
 
-        // TODO: Should we use Mac::verify() here?
         let expected_tag = floe_key.derive_header_tag::<N, S>(header.iv(), associated_data);
         let is_header_tag_valid: bool = expected_tag.ct_eq(header.tag()).into();
 
