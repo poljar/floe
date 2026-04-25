@@ -15,8 +15,9 @@
 
 use core::num::NonZero;
 
-use aead::{AeadInOut, array::ArraySize};
-use digest::{KeyInit, Mac};
+use aead::AeadInOut;
+use digest::KeyInit;
+use hkdf::hmac::EagerHash;
 
 use crate::types::AeadRotationMask;
 
@@ -24,14 +25,7 @@ use crate::types::AeadRotationMask;
 ///
 /// This is almost a marker trait. The trait does not provide any functions it
 /// only defines constants a Floe-compatible KDF implementation should use.
-pub trait FloeKdf: Mac + KeyInit {
-    /// The length of the KDF key.
-    ///
-    /// This is called the `KDF_KEY_LEN` in the Floe [specification].
-    ///
-    /// [specification]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#parameters
-    type KeySize: ArraySize;
-
+pub trait FloeKdf: EagerHash {
     /// The unique numeric identifier of this KDF implementation.
     ///
     /// Will be used in the [Floe header] as part of the parameters.

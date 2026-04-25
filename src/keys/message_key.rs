@@ -13,22 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::{marker::PhantomData, ops::Sub};
+use core::marker::PhantomData;
 
-use aead::{
-    KeySizeUser,
-    array::{Array, ArraySize},
-};
-use digest::{KeyInit, OutputSizeUser};
-use zerocopy::IntoBytes;
-#[cfg(feature = "zeroize")]
-use zeroize::Zeroize;
+use aead::Key;
 
 use super::epoch_key::EpochKey;
 use crate::{
     FloeAead, FloeKdf,
     keys::FloeKdfKey,
-    types::{AeadRotationMask, FloeIv, Parameters, SegmentSize},
+    types::{AeadRotationMask, FloeIv, SegmentSize},
+    utils::floe_kdf,
 };
 
 /// The [`MessageKey`] of a Floe session.
@@ -41,14 +35,14 @@ use crate::{
 /// `KDF_KEY_LEN` constant in the spec, or in the [`FloeKdf::KeySize`] type in
 /// this implementation.
 #[cfg_attr(feature = "zeroize", derive(zeroize::ZeroizeOnDrop))]
-pub(crate) struct MessageKey<A, H>
+pub(crate) struct MessageKey<A, K>
 where
     A: FloeAead,
-    H: FloeKdf,
+    K: FloeKdf,
 {
-    pub(super) key: FloeKdfKey<H>,
+    pub(super) key: FloeKdfKey<K>,
     pub(super) _phantom_aead: PhantomData<A>,
-    pub(super) _phantom: PhantomData<H>,
+    pub(super) _phantom: PhantomData<K>,
 }
 
 impl<A, K> MessageKey<A, K>
@@ -72,11 +66,7 @@ where
         segment_number: u64,
         rotation_mask: AeadRotationMask,
         is_final: bool,
-    ) -> EpochKey<A>
-    where
-        <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-        <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
-    {
+    ) -> EpochKey<A> {
         // The rotation mask decides how many segments will be encrypted using the same
         // epoch key.
         let masked_counter = segment_number & rotation_mask;
@@ -87,31 +77,13 @@ where
         purpose[..4].copy_from_slice(b"DEK:");
         purpose[4..].copy_from_slice(&masked_counter.to_be_bytes());
 
-        let parameters = Parameters::new::<A, K, N, S>();
+        let mut epoch_key = EpochKey { key: Key::<A>::default(), segment_number, is_final };
 
         // We're not reusing the `crate::utils::floe_kdf` function here for type safety
         // reasons. We're using the `FloeKdfKey<H>` here, while the `floe_kdf`
         // function expects a `Key<A>`.
-        #[allow(clippy::expect_used)]
-        let output = <K as KeyInit>::new_from_slice(&self.key)
-            .expect(
-                "the KDF input key material should be big enough as this is determined \
-                 by KDF_KEY_LEN parameter",
-            )
-            .chain_update(parameters.as_bytes())
-            .chain_update(floe_iv.as_array())
-            .chain_update(purpose)
-            .chain_update(associated_data)
-            .chain_update([1])
-            .finalize();
+        floe_kdf::<A, K, N, S>(&self.key, floe_iv, associated_data, &purpose, &mut epoch_key.key);
 
-        // Split the output. The key will reuse the same memory the original output
-        // used, avoiding any copying. We discard the rest of the output.
-        let (key, mut _rest) = Array::split::<<A as KeySizeUser>::KeySize>(output.into_bytes());
-
-        #[cfg(feature = "zeroize")]
-        _rest.zeroize();
-
-        EpochKey { key, segment_number, is_final }
+        epoch_key
     }
 }
