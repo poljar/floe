@@ -20,9 +20,8 @@
 
 use core::num::NonZero;
 
-use aead::{Key, consts::U48};
+use aead::Key;
 use aes_gcm::Aes256Gcm;
-use hmac::Hmac;
 use sha2::Sha384;
 
 use crate::{
@@ -32,10 +31,9 @@ use crate::{
 
 const FLOE_IV_LENGTH: usize = 32;
 
-impl FloeKdf for Hmac<Sha384> {
+impl FloeKdf for Sha384 {
     // As per the Floe spec defined in the derived parameters part:
     // https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#derived-parameters
-    type KeySize = U48;
     const KDF_ID: u8 = 0;
 }
 
@@ -54,14 +52,14 @@ impl FloeAead for Aes256Gcm {
 /// This is a type alias over the generic implementation with [`Aes256Gcm`] and
 /// [`Hmac<Sha384>`] picked as the AEAD and KDF implementation.
 pub type FloeEncryptor<'a, const S: SegmentSize> =
-    crate::random_access::FloeEncryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
+    crate::random_access::FloeEncryptor<'a, Aes256Gcm, Sha384, FLOE_IV_LENGTH, S>;
 
 /// The GCM implementation of the Floe random-access decryption APIs.
 ///  
 /// This is a type alias over the generic implementation with [`Aes256Gcm`] and
 /// [`Hmac<Sha384>`] picked as the AEAD and KDF implementation.
 pub type FloeDecryptor<'a, const S: SegmentSize> =
-    crate::random_access::FloeDecryptor<'a, Aes256Gcm, Hmac<Sha384>, FLOE_IV_LENGTH, S>;
+    crate::random_access::FloeDecryptor<'a, Aes256Gcm, Sha384, FLOE_IV_LENGTH, S>;
 
 /// The Floe-GCM key.
 ///

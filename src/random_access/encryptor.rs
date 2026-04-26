@@ -13,10 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::ops::Sub;
-
-use aead::{AeadCore, Key, KeySizeUser, array::ArraySize, consts::U32};
-use digest::OutputSizeUser;
+use aead::{AeadCore, Key, array::ArraySize};
 #[cfg(feature = "getrandom")]
 use getrandom::SysRng;
 use rand_core::CryptoRng;
@@ -66,12 +63,6 @@ where
     <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable + IntoBytes,
     <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>:
         FromBytes + Immutable + IntoBytes + Unaligned,
-    <K as OutputSizeUser>::OutputSize: Sub<<A as KeySizeUser>::KeySize>,
-    <<K as OutputSizeUser>::OutputSize as Sub<<A as KeySizeUser>::KeySize>>::Output: ArraySize,
-    <K as OutputSizeUser>::OutputSize: Sub<U32>,
-    <<K as OutputSizeUser>::OutputSize as Sub<U32>>::Output: ArraySize,
-    <K as OutputSizeUser>::OutputSize: Sub<<K as FloeKdf>::KeySize>,
-    <<K as OutputSizeUser>::OutputSize as Sub<<K as FloeKdf>::KeySize>>::Output: ArraySize,
 {
     /// Create a new [`FloeEncryptor`] with the given key and associated data.
     ///
@@ -97,10 +88,10 @@ where
     ///
     /// use aead::{Key, consts::U32};
     /// use aes_gcm::Aes256Gcm;
-    /// use hmac::Hmac;
+    /// use hkdf::hmac::Hmac;
     /// use sha2::Sha384;
     ///
-    /// type Encryptor<'a> = FloeEncryptor<'a, Aes256Gcm, Hmac<Sha384>, 32, 1024>;
+    /// type Encryptor<'a> = FloeEncryptor<'a, Aes256Gcm, Sha384, 32, 1024>;
     ///
     /// let key = [0u8; 32];
     /// let key = (&key).into();

@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aead::{AeadCore, Key};
-use digest::KeyInit;
+use aead::AeadCore;
+use hkdf::Hkdf;
 use zerocopy::IntoBytes;
 
 use crate::{
@@ -71,31 +71,23 @@ where
 }
 
 pub(crate) fn floe_kdf<A, K, const N: usize, const S: SegmentSize>(
-    key: &Key<A>,
+    key: &[u8],
     floe_iv: &FloeIv<N>,
     associated_data: &[u8],
     purpose: &[u8],
-) -> digest::CtOutput<K>
-where
+    output: &mut [u8],
+) where
     A: FloeAead,
     K: FloeKdf,
 {
     let params = Parameters::new::<A, K, N, S>();
-
-    // TODO: This should probably use the Hkdf crate to make it more clear that this
-    // should be a KDF, not a MAC. Shouldn't matter for correctness as we're
-    // partially reimplementing HKDF and not asking for too much output, but
-    // would make this more obvious.
+    let info = [params.as_bytes(), floe_iv.as_array(), purpose, associated_data];
 
     #[allow(clippy::expect_used)]
-    <K as KeyInit>::new_from_slice(key)
-        .expect(
-            "the KDF input key material should be big enough as this is determined by AEAD_KEY_LEN",
-        )
-        .chain_update(params.as_bytes())
-        .chain_update(floe_iv.as_array())
-        .chain_update(purpose)
-        .chain_update(associated_data)
-        .chain_update([1])
-        .finalize()
+    let hkdf = Hkdf::<K>::from_prk(key)
+        .expect("should be able to create a Hkdf instance from the pseudo-random key");
+
+    #[allow(clippy::expect_used)]
+    hkdf.expand_multi_info(&info, output)
+        .expect("should be able to expand enough output key material for Floe")
 }

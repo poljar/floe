@@ -20,5 +20,5 @@ mod message_key;
 pub(crate) use floe_key::FloeKey;
 pub(crate) use message_key::MessageKey;
 
-/// The underlying byte [`Array`] for a [`MessageKey`].
-pub(crate) type FloeKdfKey<K> = aead::array::Array<u8, <K as crate::FloeKdf>::KeySize>;
+/// The underlying byte [`hybrid_array::Array`] for a [`MessageKey`].
+pub(crate) type FloeKdfKey<K> = hybrid_array::Array<u8, <K as digest::OutputSizeUser>::OutputSize>;
