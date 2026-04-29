@@ -28,4 +28,8 @@ pub use segment::Segment;
 /// The encrypted segment size is expressed as an [`u32`].
 pub type SegmentSize = u32;
 
+/// Type alias for the AEAD rotation mask.
+///
+/// This value controls how many segments will be encrypted by the same
+/// encryption key.
 pub type AeadRotationMask = u64;

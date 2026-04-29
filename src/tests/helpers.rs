@@ -13,7 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(clippy::expect_used, clippy::unwrap_used, reason = "These are helpers for the tests")]
+#![allow(
+    missing_docs,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "These are helpers for the tests"
+)]
 
 use crate::{
     gcm::{FloeDecryptor, FloeEncryptor, FloeKey, Header, Segment},
@@ -38,6 +43,29 @@ macro_rules! _test_vector {
     };
 }
 
+/// A helper macro to create unit tests which will attempt to decrypt a
+/// test-vector.
+///
+/// The test vector should be comprised of a ciphertext and a matching
+/// plaintext contained in the `test-vectors` directory.
+///
+/// # Examples
+///
+/// The following example will attempt to decrypt the file
+/// `test-vectors/rust_GCM256_IV256_64_ct.txt` and compare the result of the
+/// decryption to the `test-vectors/rust_GCM256_IV256_64_pt.txt` file.
+///
+/// The segment size is given as the second argument.
+///
+/// ```
+/// test_vector!("rust_GCM256_IV256_64", 64);
+/// ```
+///
+/// The next example will override the AEAD rotation mask as well.
+///
+/// ```
+/// test_vector!("rust_rotation", 40, 10);
+/// ```
 #[macro_export]
 macro_rules! test_vector {
     ($file:literal, $segment_size:expr, $rotation_mask:expr) => {

@@ -56,6 +56,43 @@ where
     <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
     <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
 {
+    /// Create a new [`FloeDecryptor`] with the given key and associated data.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The main Floe key, used to derive the per-segment keys to
+    ///   encrypt segments.
+    /// * `associated_data` - Any additional associated data, can be used to
+    ///   bind this [`FloeEncryptor`] to a specific protocol.
+    /// * `header` - The Floe [`Header`] the encryptor created before any
+    ///   segments were encrypted.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use floe_rs::{random_access::FloeDecryptor, types::{Segment, Header}};
+    ///
+    /// use aead::{Key, consts::U32};
+    /// use aes_gcm::Aes256Gcm;
+    /// use hkdf::hmac::Hmac;
+    /// use sha2::Sha384;
+    ///
+    /// type Decryptor<'a> = FloeDecryptor<'a, Aes256Gcm, Sha384, 32, 1024>;
+    ///
+    /// let key = [0u8; 32];
+    /// let key = (&key).into();
+    ///
+    /// let header = Header::from_bytes(b"example_header")?;
+    /// let decryptor = Decryptor::new(key, b"my_custom_protocol", &header)?;
+    ///
+    /// let plaintext_size = decryptor.plaintext_size();
+    /// let mut buffer = vec![0u8; plaintext_size];
+    ///
+    /// let segment = Segment::from_bytes(b"example_segment")?;
+    ///
+    /// decryptor.decrypt_segment(&segment, &mut buffer, 0, true)?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     pub fn new(
         key: &Key<A>,
         associated_data: &'a [u8],
@@ -64,6 +101,20 @@ where
         Self::with_rotation_mask(key, associated_data, header, A::AEAD_ROTATION_MASK)
     }
 
+    /// Create a new [`FloeDecryptor`] with the given key and associated data
+    /// using a custom AEAD rotation mask.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The main Floe key, used to derive the per-segment keys to
+    ///   encrypt segments.
+    /// * `associated_data` - Any additional associated data, can be used to
+    ///   bind this [`FloeEncryptor`] to a specific protocol.
+    /// * `header` - The Floe [`Header`] the encryptor created before any
+    ///   segments were encrypted.
+    /// * `rotation_mask` - A value designating how many segments will be
+    ///   encrypted before deriving a new encryption key. `2^rotation_mask`
+    ///   segments are encrypted under a single key.
     pub fn with_rotation_mask(
         key: &Key<A>,
         associated_data: &'a [u8],
@@ -107,6 +158,15 @@ where
         plaintext_size::<A, S>()
     }
 
+    /// Decrypt a single Floe segment using this [`FloeDecryptor`].
+    ///
+    /// # Arguments
+    ///
+    /// * `segment` - A chunk of plaintext bytes which should be encrypted
+    /// * `buffer` - The output buffer where the decrypted plaintext will be
+    ///   copied to.
+    /// * `segment_number` - The current segment number.
+    /// * `is_final` - Is this the final segment?
     pub fn decrypt_segment(
         &self,
         segment: &Segment<'_, A>,
