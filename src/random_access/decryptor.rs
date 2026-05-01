@@ -173,19 +173,18 @@ where
         buffer: &mut [u8],
         segment_number: u64,
     ) -> Result<(), DecryptionError> {
-        if segment.is_final() {
-            if segment_number > A::AEAD_MAX_SEGMENTS.get() {
-                return Err(
-                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
-                );
-            }
-        } else {
-            // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
-            if segment_number > (A::AEAD_MAX_SEGMENTS.get() - 1) {
-                return Err(
-                    ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
-                );
-            }
+        // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
+        //
+        // We're subtracting by 0 or by 1 depending on if the segment is final. If you
+        // cast a bool into an integer, true will be 1 and false will be 0[1].
+        //
+        // This trick with the boolean avoids a if/else branch on the is_final() result.
+        //
+        // [1]: https://doc.rust-lang.org/std/primitive.bool.html
+        let max_segments = A::AEAD_MAX_SEGMENTS.get() - u64::from(!segment.is_final());
+
+        if segment_number > max_segments {
+            return Err(ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into());
         }
 
         let ciphertext_length = segment.ciphertext().len();
