@@ -76,7 +76,7 @@ where
 /// use aes_gcm::Aes256Gcm;
 ///
 /// # let bytes: &[u8] = unimplemented!();
-/// let segment = Segment::<Aes256Gcm, 1024>::from_bytes(bytes)?;
+/// let segment = Segment::<Aes256Gcm, 1024>::from_bytes(bytes, true)?;
 /// let buffer = vec![0u8; segment.plaintext_size()];
 ///
 /// // Now you can attempt to decrypt the segment.
@@ -100,7 +100,7 @@ where
     ///
     /// *Note*: This only attempts to reinterpret the bytes as a valid
     /// [`Segment`], as such it does not copy any data.
-    pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, SegmentDecodeError>
+    pub fn from_bytes(bytes: &'a [u8], is_final: bool) -> Result<Self, SegmentDecodeError>
     where
         A: 'a,
         <<A as AeadCore>::TagSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
@@ -118,6 +118,10 @@ where
         let segment = Segment { header, nonce, ciphertext, tag };
 
         let segment_size: usize = S.try_into().map_err(|_| SegmentDecodeError::MalformedSegment)?;
+
+        if is_final != segment.is_final() {
+            return Err(SegmentDecodeError::MalformedSegment);
+        }
 
         if segment.is_final() {
             let length: usize =

@@ -67,14 +67,6 @@ pub enum DecryptionError {
     #[error(transparent)]
     ConfigurationError(#[from] ConfigurationError),
 
-    /// The encrypted segment is malformed and couldn't be decrypted.
-    ///
-    /// This may happen because the segment is of an incorrect size for the
-    /// configured decryptor or the segment claims to be the final segment
-    /// while the caller stated otherwise.
-    #[error("the given encrypted segment is malformed")]
-    MalformedSegment,
-
     /// The parameters of the decryptor and the parameters defined in the header
     /// of the Floe ciphertext don't match.
     #[error(

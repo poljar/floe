@@ -98,10 +98,11 @@ pub(super) fn encrypt_decrypt_single_segment<const S: SegmentSize>(plaintext: &[
 
     let decryptor = FloeDecryptor::<S>::new(&key, &[], encryptor.header()).unwrap();
 
-    let segment = Segment::from_bytes(&buffer).expect("We should be able to parse the segment");
+    let segment =
+        Segment::from_bytes(&buffer, true).expect("We should be able to parse the segment");
     let mut decryption_buffer = vec![0u8; segment.plaintext_size()];
 
-    decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0, true).unwrap();
+    decryptor.decrypt_segment(&segment, &mut decryption_buffer, 0).unwrap();
 
     assert_eq!(
         plaintext, decryption_buffer,
@@ -136,14 +137,13 @@ pub(super) fn decrypt_test_vector<const S: SegmentSize>(
     for (segment_number, segment) in segments.enumerate() {
         let is_final = segment_number == num_segments - 1;
 
-        let segment = Segment::from_bytes(segment).expect("We should be able to parse the segment");
-
-        assert_eq!(is_final, segment.is_final());
+        let segment =
+            Segment::from_bytes(segment, is_final).expect("We should be able to parse the segment");
 
         let buffer = &mut plaintext_segment[..segment.plaintext_size()];
 
         decryptor
-            .decrypt_segment(&segment, buffer, segment_number as u64, is_final)
+            .decrypt_segment(&segment, buffer, segment_number as u64)
             .expect("should be able to decrypt the segment");
 
         decrypted.extend_from_slice(buffer);

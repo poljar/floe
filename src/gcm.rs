@@ -109,7 +109,7 @@ pub type Header = crate::types::Header<FLOE_IV_LENGTH>;
 /// use floe_rs::gcm::Segment;
 ///
 /// # let bytes: &[u8] = unimplemented!();
-/// let segment = Segment::<1024>::from_bytes(bytes)?;
+/// let segment = Segment::<1024>::from_bytes(bytes, true)?;
 /// let buffer = vec![0u8; segment.plaintext_size()];
 ///
 /// // Now you can attempt to decrypt the segment.

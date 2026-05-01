@@ -88,9 +88,9 @@ where
     /// let plaintext_size = decryptor.plaintext_size();
     /// let mut buffer = vec![0u8; plaintext_size];
     ///
-    /// let segment = Segment::from_bytes(b"example_segment")?;
+    /// let segment = Segment::from_bytes(b"example_segment", true)?;
     ///
-    /// decryptor.decrypt_segment(&segment, &mut buffer, 0, true)?;
+    /// decryptor.decrypt_segment(&segment, &mut buffer, 0)?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn new(
@@ -167,19 +167,13 @@ where
     /// * `buffer` - The output buffer where the decrypted plaintext will be
     ///   copied to.
     /// * `segment_number` - The current segment number.
-    /// * `is_final` - Is this the final segment?
     pub fn decrypt_segment(
         &self,
         segment: &Segment<'_, A, S>,
         buffer: &mut [u8],
         segment_number: u64,
-        is_final: bool,
     ) -> Result<(), DecryptionError> {
-        if is_final != segment.is_final() {
-            return Err(DecryptionError::MalformedSegment);
-        }
-
-        if is_final {
+        if segment.is_final() {
             if segment_number > A::AEAD_MAX_SEGMENTS.get() {
                 return Err(
                     ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
@@ -210,7 +204,7 @@ where
             self.associated_data,
             segment_number,
             self.rotation_mask,
-            is_final,
+            segment.is_final(),
         );
 
         epoch_key.decrypt_segment(segment, buffer)
