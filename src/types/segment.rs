@@ -22,6 +22,7 @@ use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U32, Una
 use crate::{
     EncryptionError,
     result::{ConfigurationError, SegmentDecodeError},
+    types::SegmentSize,
 };
 
 /// The length of the segment header.
@@ -38,6 +39,10 @@ pub(crate) const SEGMENT_HEADER_LENGTH: usize = size_of::<u32>();
 
 /// The segment header for any non-final encrypted segment.
 pub(crate) const NON_FINAL_SEGMENT_HEADER: u32 = u32::MAX;
+
+const fn segment_overhead<A: AeadCore>() -> usize {
+    SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE + A::TagSize::USIZE
+}
 
 /// The common inner type for the [Segment] and [SegmentMut] types.
 ///
@@ -71,13 +76,13 @@ where
 /// use aes_gcm::Aes256Gcm;
 ///
 /// # let bytes: &[u8] = unimplemented!();
-/// let segment = Segment::<Aes256Gcm>::from_bytes(bytes)?;
+/// let segment = Segment::<Aes256Gcm, 1024>::from_bytes(bytes)?;
 /// let buffer = vec![0u8; segment.plaintext_size()];
 ///
 /// // Now you can attempt to decrypt the segment.
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub struct Segment<'a, A>
+pub struct Segment<'a, A, const S: SegmentSize>
 where
     A: AeadCore,
 {
@@ -87,7 +92,7 @@ where
     tag: &'a Tag<A>,
 }
 
-impl<'a, A> Segment<'a, A>
+impl<'a, A, const S: SegmentSize> Segment<'a, A, S>
 where
     A: AeadCore,
 {
@@ -102,7 +107,7 @@ where
         <<A as AeadCore>::NonceSize as ArraySize>::ArrayType<u8>: FromBytes + Immutable,
     {
         let invalid_length_err = || SegmentDecodeError::InvalidSliceLength {
-            expected: Segment::<A>::overhead(),
+            expected: Segment::<A, S>::overhead(),
             got: bytes.len(),
         };
 
@@ -112,11 +117,21 @@ where
 
         let segment = Segment { header, nonce, ciphertext, tag };
 
+        let segment_size: usize = S.try_into().map_err(|_| SegmentDecodeError::MalformedSegment)?;
+
         if segment.is_final() {
             let length: usize =
                 segment.header().try_into().map_err(|_| SegmentDecodeError::MalformedSegment)?;
 
             if length != bytes.len() {
+                return Err(SegmentDecodeError::MalformedSegment);
+            }
+
+            if bytes.len() > segment_size {
+                return Err(SegmentDecodeError::MalformedSegment);
+            }
+        } else {
+            if bytes.len() != segment_size {
                 return Err(SegmentDecodeError::MalformedSegment);
             }
         }
@@ -152,7 +167,7 @@ where
     /// Calculate how many more bytes an encrypted segment would contain in
     /// addition to the ciphertext bytes itself.
     pub const fn overhead() -> usize {
-        SEGMENT_HEADER_LENGTH + A::NonceSize::USIZE + A::TagSize::USIZE
+        segment_overhead::<A>()
     }
 
     /// Get the size of the plaintext once the segment is decrypted.
@@ -185,7 +200,13 @@ where
 {
     /// Get the size the output buffer of this encrypted segment should have.
     pub(crate) const fn output_size(plaintext: &[u8]) -> usize {
-        plaintext.len() + Segment::<A>::overhead()
+        plaintext.len() + segment_overhead::<A>()
+    }
+
+    /// Calculate how many more bytes an encrypted segment would contain in
+    /// addition to the ciphertext bytes itself.
+    pub(crate) const fn overhead() -> usize {
+        segment_overhead::<A>()
     }
 
     /// Reinterpret a mutable buffer as a [`SegmentMut`] and copy the plaintext

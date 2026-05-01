@@ -29,7 +29,7 @@ where
 {
     #[allow(clippy::expect_used)]
     (TryInto::<usize>::try_into(S).expect("The encrypted segment size should fit into a u32"))
-        .checked_sub(Segment::<'static, A>::overhead())
+        .checked_sub(Segment::<'static, A, S>::overhead())
         .expect("The encrypted segment size should be bigger than the segment overhead")
 }
 
@@ -61,7 +61,7 @@ where
     // SAFETY: This cast will always be fine, the overhead by definition needs
     // to fit into an `u32` which is used for the segment size.
     #[allow(clippy::cast_possible_truncation)]
-    let overhead = Segment::<A>::overhead() as SegmentSize;
+    let overhead = Segment::<A, S>::overhead() as SegmentSize;
 
     if S < (overhead) {
         Err(ConfigurationError::TooSmallSegmentSize { minimal: overhead, got: S })

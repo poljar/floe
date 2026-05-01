@@ -19,7 +19,10 @@ use zerocopy::{BigEndian, FromBytes, Immutable, IntoBytes, KnownLayout, U64};
 
 use crate::{
     DecryptionError, EncryptionError,
-    types::segment::{NON_FINAL_SEGMENT_HEADER, Segment, SegmentMut},
+    types::{
+        SegmentSize,
+        segment::{NON_FINAL_SEGMENT_HEADER, Segment, SegmentMut},
+    },
 };
 
 /// The additional associated data for the AEAD.
@@ -146,9 +149,9 @@ where
     /// of the [`Segment::ciphertext`] field.
     ///
     /// [spec]: https://github.com/Snowflake-Labs/floe-specification/blob/main/spec/README.md#semi-public-functions-random-access
-    pub(crate) fn decrypt_segment(
+    pub(crate) fn decrypt_segment<const S: SegmentSize>(
         self,
-        segment: &Segment<'_, A>,
+        segment: &Segment<'_, A, S>,
         buffer: &mut [u8],
     ) -> Result<(), DecryptionError> {
         debug_assert_eq!(
@@ -190,7 +193,7 @@ where
             // length is too big and that the segment length fits into an usize.
             #[allow(clippy::expect_used)]
             let final_segment_length =
-                plaintext_buffer_length.checked_add(Segment::<A>::overhead()).expect(
+                plaintext_buffer_length.checked_add(SegmentMut::<A>::overhead()).expect(
                     "Adding the length of the encrypted segment overhead \
                     to the length of the final segment shouldn't overflow",
                 );

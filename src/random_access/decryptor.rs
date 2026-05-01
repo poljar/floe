@@ -151,7 +151,8 @@ where
     /// produce.
     ///
     /// The length of the plaintext the final segment will produce can be found
-    /// using the [`Segment::plaintext_size`] method.
+    /// using the [`Segment::plaintext_size`] method if the segment is the final
+    /// segment.
     pub fn plaintext_size(&self) -> usize {
         // SAFETY: The constructor of the FloeDecryptor checks that the segment size
         // fits into an usize and that it's bigger than the overhead.
@@ -169,7 +170,7 @@ where
     /// * `is_final` - Is this the final segment?
     pub fn decrypt_segment(
         &self,
-        segment: &Segment<'_, A>,
+        segment: &Segment<'_, A, S>,
         buffer: &mut [u8],
         segment_number: u64,
         is_final: bool,
@@ -178,25 +179,13 @@ where
             return Err(DecryptionError::MalformedSegment);
         }
 
-        let ciphertext_length = segment.ciphertext().len();
-        let buffer_length = buffer.len();
-        let allowed_ciphertext_length = self.plaintext_size();
-
         if is_final {
-            if segment.ciphertext().len() > allowed_ciphertext_length {
-                return Err(DecryptionError::MalformedSegment);
-            }
-
             if segment_number > A::AEAD_MAX_SEGMENTS.get() {
                 return Err(
                     ConfigurationError::MaxSegmentsReached(A::AEAD_MAX_SEGMENTS.get()).into()
                 );
             }
         } else {
-            if segment.ciphertext().len() != allowed_ciphertext_length {
-                return Err(DecryptionError::MalformedSegment);
-            }
-
             // SAFETY: This subtraction is always fine since AEAD_MAX_SEGMENTS is NonZero.
             if segment_number > (A::AEAD_MAX_SEGMENTS.get() - 1) {
                 return Err(
@@ -204,6 +193,9 @@ where
                 );
             }
         }
+
+        let ciphertext_length = segment.ciphertext().len();
+        let buffer_length = buffer.len();
 
         if ciphertext_length != buffer_length {
             return Err(ConfigurationError::InvalidBuffer {

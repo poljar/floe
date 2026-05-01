@@ -109,10 +109,10 @@ pub type Header = crate::types::Header<FLOE_IV_LENGTH>;
 /// use floe_rs::gcm::Segment;
 ///
 /// # let bytes: &[u8] = unimplemented!();
-/// let segment = Segment::from_bytes(bytes)?;
+/// let segment = Segment::<1024>::from_bytes(bytes)?;
 /// let buffer = vec![0u8; segment.plaintext_size()];
 ///
 /// // Now you can attempt to decrypt the segment.
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub type Segment<'a> = crate::types::segment::Segment<'a, Aes256Gcm>;
+pub type Segment<'a, const S: SegmentSize> = crate::types::segment::Segment<'a, Aes256Gcm, S>;
